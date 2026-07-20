@@ -1,0 +1,11 @@
+node_modules/
+dist/
+tmp/
+*.log
+.DS_Store
+.playwright/
+.sem/
+.playwright-cli/
+
+# dev worktree instance data (isolated from ~/.config/mergie)
+devdata/

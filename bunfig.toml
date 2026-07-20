@@ -1,0 +1,5 @@
+# Scope test discovery to mergie's own suite. Without this, `bun test` also
+# globs test files inside the gitignored `devdata/` PR clone (the checked-out
+# repository under review has its own tests), which pollutes and breaks the run.
+[test]
+root = "__tests__"

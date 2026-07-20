@@ -1,0 +1,60 @@
+{
+  "name": "mergie",
+  "version": "0.1.0",
+  "description": "Review GitHub pull requests from a fast local web UI, driven by a small CLI.",
+  "license": "GPL-3.0-or-later",
+  "author": "Ayush Poddar",
+  "homepage": "https://github.com/ayushpoddar/mergie#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ayushpoddar/mergie.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ayushpoddar/mergie/issues"
+  },
+  "keywords": [
+    "github",
+    "pull-request",
+    "code-review",
+    "diff",
+    "cli",
+    "bun",
+    "review"
+  ],
+  "type": "module",
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "bin": {
+    "mergie": "./bin/mergie.ts"
+  },
+  "scripts": {
+    "start": "bun run bin/mergie.ts",
+    "dev:web": "vite",
+    "build:web": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:e2e": "bun test e2e"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.177",
+    "@tanstack/react-query": "5.101.0",
+    "@trpc/client": "11.17.0",
+    "@trpc/react-query": "11.17.0",
+    "@trpc/server": "11.17.0",
+    "highlight.js": "11.11.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.14",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.5"
+  }
+}

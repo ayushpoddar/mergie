@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="mergie">
+  <rect width="32" height="32" rx="7" fill="#ffffff"/>
+  <!-- added line: green "+" and bar -->
+  <line x1="8" y1="8" x2="8" y2="12" stroke="#2da44e" stroke-width="2" stroke-linecap="round"/>
+  <line x1="6" y1="10" x2="10" y2="10" stroke="#2da44e" stroke-width="2" stroke-linecap="round"/>
+  <rect x="13" y="8.5" width="13" height="3" rx="1.5" fill="#2da44e"/>
+  <!-- removed line: red "−" and bar -->
+  <line x1="6" y1="16" x2="10" y2="16" stroke="#cf222e" stroke-width="2" stroke-linecap="round"/>
+  <rect x="13" y="14.5" width="10" height="3" rx="1.5" fill="#cf222e"/>
+  <!-- context line -->
+  <rect x="13" y="20.5" width="8" height="3" rx="1.5" fill="#c8d1da"/>
+</svg>

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Launch a *dev* instance of mergie from this worktree, isolated from the
+# primary daemon so it cannot disturb ongoing review sessions:
+#   - its own port (MERGIE_PORT, default 4518 — primary uses 4517)
+#   - its own data directory (XDG_DATA_HOME → <worktree>/devdata, so PR
+#     databases/clones/artifacts never touch ~/.config/mergie)
+# Config (models, AI-review templates) is shared with the primary instance
+# (read-only) unless XDG_CONFIG_HOME is overridden.
+#
+# Usage: bin/mergie-dev --pr <url> | status | stop
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+export MERGIE_PORT="${MERGIE_PORT:-4518}"
+export XDG_DATA_HOME="${MERGIE_DEV_DATA:-$HERE/devdata}"
+
+exec bun run "$HERE/bin/mergie.ts" "$@"
