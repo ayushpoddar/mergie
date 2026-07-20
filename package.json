@@ -1,6 +1,9 @@
 {
-  "name": "mergie",
+  "name": "@ayushpoddar/mergie",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Review GitHub pull requests from a fast local web UI, driven by a small CLI.",
   "license": "GPL-3.0-or-later",
   "author": "Ayush Poddar",

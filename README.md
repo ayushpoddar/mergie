@@ -37,10 +37,12 @@ review (just the new commits since last time) awkward, and can't help you naviga
 ## Install
 
 ```sh
-bun install -g mergie
+bun install -g @ayushpoddar/mergie
 # or run without installing:
-bunx mergie --pr https://github.com/withastro/astro/pull/17360
+bunx @ayushpoddar/mergie --pr https://github.com/withastro/astro/pull/17360
 ```
+
+After a global install the command is simply `mergie`.
 
 ## Usage
 
