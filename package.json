@@ -28,6 +28,12 @@
   "bin": {
     "mergie": "./bin/mergie.ts"
   },
+  "files": [
+    "bin",
+    "src",
+    "vite.config.ts",
+    "tsconfig.json"
+  ],
   "scripts": {
     "start": "bun run bin/mergie.ts",
     "dev:web": "vite",
