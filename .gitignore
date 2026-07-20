@@ -9,3 +9,4 @@ tmp/
 
 # dev worktree instance data (isolated from ~/.config/mergie)
 devdata/
+.npmrc
