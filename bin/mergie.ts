@@ -12,8 +12,9 @@ if (argv[0] === "__daemon") {
   const { DAEMON_PORT, DIST_DIR, ROOT } = await import("@/cli/constants.ts");
   const registry = createPrRegistry();
 
-  // Rebuild the UI on cold start so the daemon always serves the current
-  // interface (source changes since the last build are picked up here).
+  // On cold start, rebuild the UI when running from a dev checkout (so source
+  // changes are picked up); a published install has no build toolchain and
+  // ships a prebuilt UI, which buildWebUi serves as-is without rebuilding.
   await buildWebUi({ root: ROOT });
 
   /** Flush the stop response, then let in-flight AI work finish before exiting. */

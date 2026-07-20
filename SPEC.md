@@ -27,10 +27,14 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 - The first invocation starts a **background daemon** that serves the web UI. Subsequent
   invocations **attach to the running daemon**. One daemon serves **multiple PRs concurrently**,
   switchable within the UI (§4a).
-- On **cold start the daemon rebuilds the web UI**, so it always serves the current interface
-  (source changes since the last build are picked up). This adds ~1–2s to a cold start; attaching
-  to an already-running daemon does **not** rebuild — to pick up new UI changes, `mergie reload`.
-  A failed build does not block startup: the daemon still serves the previous build.
+- On **cold start, a development checkout rebuilds the web UI** (the build toolchain is present),
+  so it always serves the current interface (source changes since the last build are picked up).
+  This adds ~1–2s to a cold start; attaching to an already-running daemon does **not** rebuild —
+  to pick up new UI changes, `mergie reload`. A failed build does not block startup: the daemon
+  still serves the previous build.
+- A **published install ships a prebuilt UI** (`dist/web`, produced at package time) and omits the
+  build toolchain, so cold start **skips the rebuild** and serves the bundled UI directly — startup
+  is immediate and no build tools are required on the user's machine.
 - Unless `--no-open` is given, an open flow **auto-opens a browser tab** (the home picker for the
   no-arg/`reload` flows, or the PR for `--pr`). The **tab title reflects the PR** when one is
   selected (`org/repo #number — title`). The browser tab shows a **favicon**: a small diff —

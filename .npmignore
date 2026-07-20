@@ -1,0 +1,4 @@
+# Packing is governed by the "files" allow-list in package.json. This file
+# exists so npm does NOT fall back to .gitignore when packing — .gitignore
+# excludes dist/, but the published package must include the prebuilt UI
+# (dist/web) produced by the "prepack" script.

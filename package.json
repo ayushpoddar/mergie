@@ -31,6 +31,7 @@
   "files": [
     "bin",
     "src",
+    "dist",
     "vite.config.ts",
     "tsconfig.json"
   ],
@@ -38,6 +39,7 @@
     "start": "bun run bin/mergie.ts",
     "dev:web": "vite",
     "build:web": "vite build",
+    "prepack": "bun run build:web",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "test:e2e": "bun test e2e"
