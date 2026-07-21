@@ -45,6 +45,12 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 - The daemon binds port **4517** by default; setting **`MERGIE_PORT`** overrides it. Combined with
   `XDG_DATA_HOME` (see §4), this lets a **second, isolated instance** (e.g. a dev build) run
   alongside the primary daemon without sharing its port or data.
+- **Source-run guard.** Running mergie directly from a source checkout (a bare `bin/mergie.ts`)
+  would land on the default port + real data dir and clash with the installed daily-driver
+  instance. So a bare run **refuses to start** and points to the isolated dev launcher instead.
+  The guard fires only from a source checkout (detected by a `.git` entry at the repo root — never
+  present in the published package or a `bunx` cache); it is bypassed by `MERGIE_DEV=1` (which the
+  dev launcher sets) or `MERGIE_FORCE=1` (a manual override).
 
 ## 2. Authentication
 

@@ -1,6 +1,17 @@
 #!/usr/bin/env bun
+import { existsSync } from "node:fs";
 import { parseArgs } from "@/cli/args.ts";
 import { runCli } from "@/cli/run.ts";
+import { ROOT } from "@/cli/constants.ts";
+import { isBlockedSourceRun, SOURCE_RUN_GUIDANCE } from "@/cli/sourceGuard.ts";
+
+// Guard against a bare source run (bin/mergie.ts) hitting the primary daemon +
+// real data dir. The dev wrapper sets MERGIE_DEV and inherits into the spawned
+// daemon; a published install has no .git, so this never fires there.
+if (isBlockedSourceRun({ root: ROOT, env: process.env, exists: existsSync })) {
+  console.error(SOURCE_RUN_GUIDANCE);
+  process.exit(1);
+}
 
 const argv: string[] = process.argv.slice(2);
 

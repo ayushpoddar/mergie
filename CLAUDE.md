@@ -42,9 +42,12 @@ The primary daemon (the user's live review sessions) runs on **port 4517** with 
 `mergie` command or `bun run bin/mergie.ts` directly — both would collide with that primary
 daemon (same port and, unless overridden, same data dir) and disturb ongoing reviews.
 
-Instead, always launch via **`bin/mergie-dev`**, which runs an **isolated** instance:
+A bare `bin/mergie.ts` run is now **blocked by a source-run guard** (it detects the repo's `.git`
+and exits with guidance) precisely to prevent this collision. Instead, always launch via
+**`bin/mergie-dev`**, which runs an **isolated** instance:
 - its own port (`MERGIE_PORT`, default **4518**),
 - its own data directory (`XDG_DATA_HOME` → `<worktree>/devdata`, gitignored),
+- sets `MERGIE_DEV=1` so it passes the source-run guard,
 - config (models, AI-review templates) shared read-only with the primary instance.
 
 ```

@@ -14,5 +14,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 export MERGIE_PORT="${MERGIE_PORT:-4518}"
 export XDG_DATA_HOME="${MERGIE_DEV_DATA:-$HERE/devdata}"
+# Declare this as the sanctioned dev run so bin/mergie.ts's source-run guard
+# lets it through (and the flag inherits into the spawned daemon process).
+export MERGIE_DEV=1
 
 exec bun run "$HERE/bin/mergie.ts" "$@"
