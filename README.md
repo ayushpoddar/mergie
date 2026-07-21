@@ -32,6 +32,10 @@ review (just the new commits since last time) awkward, and can't help you naviga
 - **git** and the **[GitHub CLI](https://cli.github.com) (`gh`)**, authenticated
   (`gh auth login`). mergie reuses `gh`'s token for **both** API access and cloning — it clones over
   HTTPS via gh's credential helper, so **no SSH key or host-key setup is needed**.
+- *(Optional, for code search)* **[ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`)** backs
+  the search rail's **General** text/regex search, and **[`sem`](https://ataraxy-labs.github.io/sem/)**
+  (`brew install sem-cli`) backs **Symbol** definition/usages lookups. mergie runs fine without
+  them — only those two search features are unavailable.
 - *(Optional, for AI features)* Claude access for the Claude Agent SDK — e.g. an
   `ANTHROPIC_API_KEY` in your environment.
 

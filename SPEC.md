@@ -479,9 +479,11 @@ reviews.
   WebSocket/subscription channel.
 - **Persistence:** raw SQL over `bun:sqlite` with a thin, typed repository helper (no ORM).
 - **Syntax highlighting:** highlight.js.
-- **External tools (already installed):** `git` (clone/fetch/diff), `gh` (GitHub API), `sem`
-  (definition/usages), `rg` (word search) — all invoked as subprocesses, targeting the correct
-  branch checkout via `-C` / `--cwd`.
+- **External tools (invoked as subprocesses,** targeting the correct branch checkout via `-C` /
+  `--cwd`): **required** — `git` (clone/fetch/diff), `gh` (GitHub API); **optional, for the search
+  rail only** — `sem` (Symbol definition/usages) and `rg` (General word/regex search). When a
+  search tool is absent, mergie still runs; only that search feature is unavailable (its request
+  errors), so `git`/`gh` are hard requirements and `sem`/`rg` are not.
 - **Development method:** strict **test-first, red-green (TDD)** — write a failing test, confirm
   it fails for the right reason, write the minimum code to pass, then refactor green.
 - **Testing layers:**
