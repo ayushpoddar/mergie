@@ -82,10 +82,12 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 - Persisted data: per-hunk viewed state, comments, reviewed commit-ranges, AI review results,
   AI chat sessions, generated artifacts. On restarting `mergie` for the same PR, all of this is
   restored.
-- **Config file:** a single user config file under `$XDG_CONFIG_HOME/mergie/` (TOML). It holds:
-  - lock-file / generated-file glob patterns (extends a built-in default set),
-  - the selectable Claude model list,
-  - AI-review prompt templates.
+- **Config file:** a single, **optional** user config file at `$XDG_CONFIG_HOME/mergie/config.toml`
+  (TOML). mergie **does not create it** — when it is absent, the built-in defaults apply. When
+  present it holds:
+  - lock-file / generated-file glob patterns (**extend** the built-in default set),
+  - the selectable Claude model list (**replaces** the default list),
+  - AI-review prompt templates (**replaces** the default templates).
 
 ## 4a. Home & PR selection
 

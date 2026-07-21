@@ -74,11 +74,44 @@ serves **multiple PRs at once**, switchable inside the UI.
 
 ## Configuration
 
-- **Data & state:** `$XDG_DATA_HOME/mergie/` (falls back to your platform default).
-- **Config:** a TOML file under `$XDG_CONFIG_HOME/mergie/` for lock-file glob patterns, the
-  selectable Claude model list, and AI-review prompt templates.
+- **Data & state:** `$XDG_DATA_HOME/mergie/` (falling back to `~/.local/share/mergie/` when
+  `XDG_DATA_HOME` is unset). mergie creates this directory automatically.
+- **Config (optional):** mergie runs on built-in defaults and **creates no config file**. To
+  override them, create `$XDG_CONFIG_HOME/mergie/config.toml` yourself (falling back to
+  `~/.config/mergie/config.toml` when `XDG_CONFIG_HOME` is unset). It can set `lockfilePatterns` (which **extend** the built-in lock/generated globs),
+  `models` (the selectable Claude model list), and `templates` (AI-review prompts) — the latter two
+  **replace** the defaults when present. An absent or empty config dir is normal.
 - **Port:** the daemon binds **4517**; set `MERGIE_PORT` to change it. Combined with
   `XDG_DATA_HOME`, this lets a second, isolated instance run alongside the first.
+
+### `config.toml` format
+
+Every section is optional — include only what you want to change. Unknown keys are ignored. Run
+`mergie reload` (or reopen the PR) to apply edits.
+
+```toml
+# Extra lock/generated globs. ADDED on top of the built-in set (package-lock.json,
+# yarn.lock, *.min.js, …), so listing these does not disable the defaults.
+lockfilePatterns = ["*.generated.ts", "src/api/schema.ts"]
+
+# Selectable Claude models. REPLACES the default list, so include every model you want.
+#   id    — passed to the Claude Agent SDK (required)
+#   label — text shown in the picker (optional; defaults to id)
+[[models]]
+id = "claude-opus-4-8"
+label = "Opus 4.8"
+
+[[models]]
+id = "claude-sonnet-4-6"
+label = "Sonnet 4.6"
+
+# AI-review prompt templates. REPLACES the defaults ("Key decisions", "Adversarial bug pass").
+# Each entry needs all three fields.
+[[templates]]
+id = "security"
+title = "Security pass"
+prompt = "Review the diff for security issues and unsafe patterns."
+```
 
 ## Development
 
