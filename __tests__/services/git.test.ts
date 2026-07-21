@@ -187,12 +187,18 @@ describe("createGitService — unit (fake runner)", () => {
     const noGitDir = "/nonexistent-mergie-dir";
     const runner = fakeRunner("", 0);
     const svc = createGitService(noGitDir, runner);
-    await svc.cloneOrFetch("git@github.com:org/repo.git", ["refs/pull/1/head"]);
+    await svc.cloneOrFetch("https://github.com/org/repo.git", ["refs/pull/1/head"]);
 
     expect(runner.calls).toHaveLength(1);
     const call = runner.calls[0];
     expect(call?.cmd).toBe("git");
-    expect(call?.args).toEqual(["clone", "git@github.com:org/repo.git", noGitDir]);
+    // Clones over HTTPS, authenticating via the gh CLI credential helper (the
+    // empty helper first resets any inherited helper), so no SSH setup is needed.
+    expect(call?.args).toEqual([
+      "-c", "credential.helper=",
+      "-c", "credential.helper=!gh auth git-credential",
+      "clone", "https://github.com/org/repo.git", noGitDir,
+    ]);
   });
 
   // ----- cloneOrFetch: fetch path -----
@@ -202,12 +208,16 @@ describe("createGitService — unit (fake runner)", () => {
     const realDir = new URL("../../", import.meta.url).pathname;
     const runner = fakeRunner("", 0);
     const svc = createGitService(realDir, runner);
-    await svc.cloneOrFetch("git@github.com:org/repo.git", ["main", "develop"]);
+    await svc.cloneOrFetch("https://github.com/org/repo.git", ["main", "develop"]);
 
     expect(runner.calls).toHaveLength(1);
     const call = runner.calls[0];
     expect(call?.cmd).toBe("git");
-    expect(call?.args).toEqual(["-C", realDir, "fetch", "origin", "main", "develop"]);
+    expect(call?.args).toEqual([
+      "-c", "credential.helper=",
+      "-c", "credential.helper=!gh auth git-credential",
+      "-C", realDir, "fetch", "origin", "main", "develop",
+    ]);
   });
 
   // ----- cloneOrFetch: error propagation -----
@@ -216,7 +226,7 @@ describe("createGitService — unit (fake runner)", () => {
     const noGitDir = "/nonexistent-mergie-dir";
     const runner = fakeRunner("", 128, "fatal: repo not found");
     const svc = createGitService(noGitDir, runner);
-    await expect(svc.cloneOrFetch("git@github.com:org/repo.git", [])).rejects.toThrow(
+    await expect(svc.cloneOrFetch("https://github.com/org/repo.git", [])).rejects.toThrow(
       "fatal: repo not found",
     );
   });

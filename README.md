@@ -30,7 +30,8 @@ review (just the new commits since last time) awkward, and can't help you naviga
 
 - **[Bun](https://bun.sh)** ≥ 1.2 (mergie's runtime).
 - **git** and the **[GitHub CLI](https://cli.github.com) (`gh`)**, authenticated
-  (`gh auth login`). mergie reuses `gh`'s token for all API access and your git config for cloning.
+  (`gh auth login`). mergie reuses `gh`'s token for **both** API access and cloning — it clones over
+  HTTPS via gh's credential helper, so **no SSH key or host-key setup is needed**.
 - *(Optional, for AI features)* Claude access for the Claude Agent SDK — e.g. an
   `ANTHROPIC_API_KEY` in your environment.
 

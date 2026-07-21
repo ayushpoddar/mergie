@@ -1,6 +1,6 @@
 {
   "name": "mergie-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Review GitHub pull requests from a fast local web UI, driven by a small CLI.",
   "license": "GPL-3.0-or-later",
   "author": "Ayush Poddar",

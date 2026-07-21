@@ -37,16 +37,18 @@ export interface GitService {
   /**
    * Ensure the repository is available locally and up to date.
    *
-   * - If `<cloneDir>/.git` is absent: runs `git clone <sshUrl> <cloneDir>`.
+   * - If `<cloneDir>/.git` is absent: runs `git clone <remoteUrl> <cloneDir>`.
    * - If present: runs `git -C <cloneDir> fetch origin <refs...>`.
    *
+   * Both paths authenticate HTTPS remotes through the gh CLI credential helper
+   * (see {@link GH_CREDENTIAL_ARGS}), so no SSH key or host-key trust is needed.
    * Throws if the git process exits with a non-zero code; the error message
    * includes stderr so callers can surface the reason.
    *
-   * @param sshUrl - SSH remote URL, e.g. `git@github.com:org/repo.git`.
-   * @param refs   - Ref names / refspecs to fetch (e.g. `["main", "refs/pull/1/head"]`).
+   * @param remoteUrl - HTTPS remote URL, e.g. `https://github.com/org/repo.git`.
+   * @param refs      - Ref names / refspecs to fetch (e.g. `["main", "refs/pull/1/head"]`).
    */
-  cloneOrFetch(sshUrl: string, refs: string[]): Promise<void>;
+  cloneOrFetch(remoteUrl: string, refs: string[]): Promise<void>;
 
   /**
    * List commits in the range `startSha..endSha`, ordered oldest → newest.
@@ -164,6 +166,18 @@ function wsArgs(ignoreWhitespace: boolean | undefined): readonly string[] {
   return ignoreWhitespace ? [IGNORE_WHITESPACE_ARG] : [];
 }
 
+/**
+ * Per-command git config that authenticates HTTPS remotes via the **gh CLI's
+ * credential helper**, so cloning/fetching reuses the user's existing `gh`
+ * login (no separate SSH key or host-key trust required). The empty first
+ * helper resets any inherited helper; the second delegates to `gh`. Passed as
+ * `-c` flags so the user's global git config is never modified.
+ */
+const GH_CREDENTIAL_ARGS = [
+  "-c", "credential.helper=",
+  "-c", "credential.helper=!gh auth git-credential",
+] as const;
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -194,11 +208,11 @@ export function createGitService(
   runner: CommandRunner = bunRunner,
 ): GitService {
   return {
-    async cloneOrFetch(sshUrl, refs) {
+    async cloneOrFetch(remoteUrl, refs) {
       const hasGit = existsSync(`${cloneDir}/.git`);
       const args: string[] = hasGit
-        ? ["-C", cloneDir, "fetch", "origin", ...refs]
-        : ["clone", sshUrl, cloneDir];
+        ? [...GH_CREDENTIAL_ARGS, "-C", cloneDir, "fetch", "origin", ...refs]
+        : [...GH_CREDENTIAL_ARGS, "clone", remoteUrl, cloneDir];
 
       const result = await runner.run("git", args);
       if (result.exitCode !== 0) {

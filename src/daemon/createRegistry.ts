@@ -174,13 +174,15 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
   const artifacts = artifactsRepo(db);
   const aiReviews = aiReviewsRepo(db);
   const aiReviewTracker = createAiReviewTracker();
-  const sshUrl = `git@github.com:${ref.owner}/${ref.repo}.git`;
+  // Clone over HTTPS on the PR's own host (honours GitHub Enterprise), authed by
+  // the gh credential helper — reuses the user's gh login, no SSH setup needed.
+  const remoteUrl = `https://${ref.host}/${ref.owner}/${ref.repo}.git`;
   let cloned = false;
   let baselineSha = "";
 
   async function ensureClone(): Promise<void> {
     if (cloned) return;
-    await git.cloneOrFetch(sshUrl, [`refs/pull/${ref.number}/head`, meta.baseRef]);
+    await git.cloneOrFetch(remoteUrl, [`refs/pull/${ref.number}/head`, meta.baseRef]);
     baselineSha = (await git.mergeBase(`origin/${meta.baseRef}`, meta.headSha)) || meta.baseRef;
     cloned = true;
   }
@@ -320,7 +322,7 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
       pr.body = fresh.body;
       pr.baseRef = fresh.baseRef;
       pr.headRef = fresh.headRef;
-      await git.cloneOrFetch(sshUrl, [`refs/pull/${ref.number}/head`, fresh.baseRef]);
+      await git.cloneOrFetch(remoteUrl, [`refs/pull/${ref.number}/head`, fresh.baseRef]);
       baselineSha = (await git.mergeBase(`origin/${fresh.baseRef}`, fresh.headSha)) || fresh.baseRef;
       cloned = true;
     },

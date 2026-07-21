@@ -48,7 +48,13 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 
 ## 2. Authentication
 
-- Reuse the existing `gh` CLI login. **SSH** is used for cloning (per the user's git config).
+- Reuse the existing `gh` CLI login for **everything** — API *and* cloning — so `gh auth login` is
+  the only setup required (no SSH key or host-key trust).
+- **Cloning/fetching go over HTTPS** on the PR's own host, authenticated by the **gh credential
+  helper** (`git -c credential.helper='!gh auth git-credential' …`, injected per-command so the
+  user's global git config is untouched). This honours **GitHub Enterprise** hosts and needs no SSH
+  setup. (Clones created before this — with an SSH `origin` — keep fetching over SSH; only new
+  clones use HTTPS.)
 - All GitHub API access (comment sync, posting, editing, deleting) goes through the **`gh` CLI**
   (`gh api`), using its token (which has `repo` scope). No separate token, no Octokit dependency.
 

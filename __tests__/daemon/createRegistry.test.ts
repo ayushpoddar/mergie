@@ -127,6 +127,34 @@ function makeReviewRegistry() {
   });
 }
 
+describe("clone remote", () => {
+  /** Load a PR and return the remote URL passed to the lazy clone. */
+  async function capturedCloneUrl(prUrl: string): Promise<string | null> {
+    let url: string | null = null;
+    const recordingGit = (): GitService => ({ ...fakeGit(), cloneOrFetch: async (u) => { url = u; } });
+    const reg = createPrRegistry({
+      ghPr: fakeGhPr(), openDb: () => openDatabase(":memory:"), makeGit: recordingGit,
+      config: defaultConfig(), ensureDir: () => {}, now: () => 1000,
+      pathEnv: { env: { XDG_DATA_HOME: "/tmp/mergie-test-data" }, home: "/tmp" },
+    });
+    const pr = await reg.loadPr(prUrl);
+    await reg.getWorkspace(pr.id)!.commitsWithBaseline(); // triggers the lazy clone
+    return url;
+  }
+
+  test("clones over HTTPS (not SSH) for github.com", async () => {
+    expect(await capturedCloneUrl("https://github.com/withastro/astro/pull/17360")).toBe(
+      "https://github.com/withastro/astro.git",
+    );
+  });
+
+  test("honours the PR host for GitHub Enterprise", async () => {
+    expect(await capturedCloneUrl("https://github.acme.com/acme/widgets/pull/7")).toBe(
+      "https://github.acme.com/acme/widgets.git",
+    );
+  });
+});
+
 describe("workspace refresh", () => {
   test("re-fetches metadata and surfaces new commits + updated title", async () => {
     let calls = 0;
