@@ -32,9 +32,14 @@ export function HunkCard(props: {
   const { previewPost, postComment, replyToThread, onAskAi, revealed } = props;
   const [collapsed, setCollapsed] = useState<boolean>(hunk.viewed);
   const [composingHunk, setComposingHunk] = useState(false);
+  // A large hunk hides its diff behind a "Load diff" button until asked for.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => setCollapsed(hunk.viewed), [hunk.viewed]);
-  // Expand when this hunk is revealed (jumped to) so its comment is on screen.
-  useEffect(() => { if (revealed) setCollapsed(false); }, [revealed]);
+  // Expand (and load) when this hunk is revealed (jumped to) so its comment and
+  // the surrounding lines are on screen.
+  useEffect(() => { if (revealed) { setCollapsed(false); setLoaded(true); } }, [revealed]);
+
+  const showPlaceholder = hunk.isLarge && !loaded;
 
   const hunkComments = hunk.comments.filter((c) => c.lineIndex < 0);
 
@@ -79,19 +84,26 @@ export function HunkCard(props: {
               />
             </div>
           )}
-          <DiffLines
-            lines={hunk.lines}
-            path={path}
-            comments={hunk.comments}
-            githubThreads={hunk.githubThreads}
-            endSha={endSha}
-            onAddComment={addComment}
-            onEditComment={editComment}
-            onDeleteComment={deleteComment}
-            onReplyToThread={replyToThread}
-            previewPost={previewPost}
-            onPostComment={postComment}
-          />
+          {showPlaceholder ? (
+            <div className="large-diff">
+              <span className="notice">Large diff hidden — {hunk.changedLines.toLocaleString()} changed lines.</span>
+              <button type="button" className="load-diff" onClick={() => setLoaded(true)}>Load diff</button>
+            </div>
+          ) : (
+            <DiffLines
+              lines={hunk.lines}
+              path={path}
+              comments={hunk.comments}
+              githubThreads={hunk.githubThreads}
+              endSha={endSha}
+              onAddComment={addComment}
+              onEditComment={editComment}
+              onDeleteComment={deleteComment}
+              onReplyToThread={replyToThread}
+              previewPost={previewPost}
+              onPostComment={postComment}
+            />
+          )}
         </>
       )}
     </section>

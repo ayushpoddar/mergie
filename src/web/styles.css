@@ -534,6 +534,19 @@ mark.diff-word { background: none; color: inherit; border-radius: 2px; }
 
 .notice { color: var(--muted); font-style: italic; font-size: var(--fs-secondary); }
 
+.large-diff {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
+  padding: var(--sp-3); background: var(--surface-muted, transparent);
+  border-top: 1px solid var(--border);
+}
+.large-diff .notice { font-style: normal; }
+.load-diff {
+  padding: 4px 12px; border-radius: var(--radius-control); cursor: pointer;
+  border: 1px solid var(--accent-border); background: var(--surface); color: var(--accent);
+  font-size: var(--fs-secondary);
+}
+.load-diff:hover { background: var(--accent-tint); }
+
 .file-heading-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 /* Modal + full-file split view */

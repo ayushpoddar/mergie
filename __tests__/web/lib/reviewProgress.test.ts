@@ -3,7 +3,7 @@ import { reviewProgress, type ReviewProgress } from "@/web/lib/reviewProgress.ts
 import type { FileView, HunkView } from "@/daemon/reviewService.ts";
 
 function hunk(hash: string, viewed: boolean): HunkView {
-  return { hash, header: "@@", oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: [], viewed, comments: [], githubThreads: [] };
+  return { hash, header: "@@", oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: [], changedLines: 0, isLarge: false, viewed, comments: [], githubThreads: [] };
 }
 function file(newPath: string, hunks: HunkView[], opts: Partial<FileView> = {}): FileView {
   return {

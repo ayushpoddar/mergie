@@ -120,7 +120,9 @@ guidance instead of a cryptic error midway.
   present it holds:
   - lock-file / generated-file glob patterns (**extend** the built-in default set),
   - the selectable Claude model list (**replaces** the default list),
-  - AI-review prompt templates (**replaces** the default templates).
+  - AI-review prompt templates (**replaces** the default templates),
+  - `largeDiffThreshold` — the changed-line count at or above which a hunk collapses behind a
+    "Load diff" button (integer; **default 500**; `0` disables collapsing). See §6.
 
 ## 4a. Home & PR selection
 
@@ -250,8 +252,16 @@ guidance instead of a cryptic error midway.
     across range changes whenever the hunk is unchanged.
   - A file auto-becomes **viewed** when all its hunks are viewed.
 - **File handling:** **text** diffs — including added, deleted, and renamed files — are rendered
-  inline. **Binary** files and **oversized** files show a **placeholder** instead of content; files
-  with **no textual changes** (e.g. a pure rename or mode change) show a short "no changes" note.
+  inline. **Binary** files show a **placeholder** instead of content; files with **no textual
+  changes** (e.g. a pure rename or mode change) show a short "no changes" note.
+- **Large hunks collapse by default.** A hunk whose **changed lines** (additions + deletions,
+  context excluded) reach the **`largeDiffThreshold`** (default **500**; §4) is **hidden behind a
+  "Load diff" button** labelled with its changed-line count (e.g. "Large diff hidden — 1,240
+  changed lines."), so one huge hunk doesn't slow the page or bury the rest of the review.
+  Clicking **Load diff** renders it in place; jumping to a comment inside a large hunk loads it
+  automatically. A collapsed large hunk **still counts** toward the review-progress ring — reaching
+  "All reviewed" means loading and viewing it like any other hunk. `largeDiffThreshold = 0`
+  disables collapsing entirely.
 - **Toggles** control visibility of: viewed hunks, viewed files, lock/generated files, and
   whitespace-only changes (see below). They live under a **"View"** heading in the left sidebar as
   real, keyboard-operable **on/off switches**. To stay compact, the group **pins the two most-used

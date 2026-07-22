@@ -72,6 +72,30 @@ describe("buildRangeView", () => {
   });
 });
 
+describe("buildRangeView — large hunks", () => {
+  // The src/a.ts hunk in DIFF has 1 deletion + 1 addition = 2 changed lines.
+  test("annotates changedLines and leaves isLarge false without a threshold", async () => {
+    const h = (await buildRangeView(deps(), "s", "e"))[0]!.hunks[0]!;
+    expect(h.changedLines).toBe(2);
+    expect(h.isLarge).toBe(false);
+  });
+
+  test("marks a hunk large when changed lines reach the threshold", async () => {
+    const files = await buildRangeView(deps({ largeDiffThreshold: 2 }), "s", "e");
+    expect(files[0]!.hunks[0]!.isLarge).toBe(true);
+  });
+
+  test("does not mark large when below the threshold", async () => {
+    const files = await buildRangeView(deps({ largeDiffThreshold: 3 }), "s", "e");
+    expect(files[0]!.hunks[0]!.isLarge).toBe(false);
+  });
+
+  test("a threshold of 0 disables collapsing", async () => {
+    const files = await buildRangeView(deps({ largeDiffThreshold: 0 }), "s", "e");
+    expect(files[0]!.hunks[0]!.isLarge).toBe(false);
+  });
+});
+
 describe("buildRangeView — comment anchoring", () => {
   test("attaches a line comment to its line by content hash", async () => {
     const anchor = commentAnchorHash("src/a.ts", "RIGHT", "const b = 3;");

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseUnifiedDiff } from "@/domain/diff.ts";
+import { changedLineCount, parseUnifiedDiff } from "@/domain/diff.ts";
 
 const MODIFIED = `diff --git a/src/a.ts b/src/a.ts
 index 111..222 100644
@@ -107,6 +107,19 @@ describe("parseUnifiedDiff — hunk contents", () => {
 \\ No newline at end of file
 `)[0]!.hunks[0]!;
     expect(hunk.lines.map((l) => l.kind)).toEqual(["del", "add"]);
+  });
+});
+
+describe("changedLineCount", () => {
+  /** [label, diff text, expected changed (add+del) line count] */
+  const CASES: Array<[string, string, number]> = [
+    ["modified: 1 del + 1 add, 2 context ignored", MODIFIED, 2],
+    ["added: 2 additions", ADDED, 2],
+    ["deleted: 2 deletions", DELETED, 2],
+  ];
+  test.each(CASES)("%s → %p", (_label, diff, expected) => {
+    const lines = parseUnifiedDiff(diff)[0]!.hunks[0]!.lines;
+    expect(changedLineCount(lines)).toBe(expected);
   });
 });
 

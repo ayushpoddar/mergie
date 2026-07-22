@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.3.0] - 2026-07-22
+
+### Added
+- **Large hunks collapse by default.** A hunk with 500 or more changed lines (additions +
+  deletions) is now hidden behind a "Load diff" button showing its changed-line count, so a single
+  huge hunk no longer slows the page or buries the rest of the review. Clicking Load diff renders
+  it in place; jumping to a comment inside a large hunk loads it automatically. Collapsed hunks
+  still count toward the review-progress ring. The threshold is configurable via
+  `largeDiffThreshold` in `config.toml` (default 500; `0` disables collapsing).
+
 ## [0.2.1] - 2026-07-22
 
 ### Added
@@ -45,6 +55,7 @@ This project adheres to [Semantic Versioning](https://semver.org).
   symbol search, and filters to hide viewed, lock/generated, or whitespace-only changes.
 - Ships a **prebuilt UI**, so `bun install -g mergie-cli` needs no build toolchain.
 
+[0.3.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.0
 [0.1.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.1.1

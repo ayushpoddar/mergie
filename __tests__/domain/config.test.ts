@@ -37,3 +37,24 @@ describe("parseConfig", () => {
     expect(() => parseConfig(`somethingUnknown = 42`)).not.toThrow();
   });
 });
+
+describe("parseConfig — largeDiffThreshold", () => {
+  test("defaults to 500", () => {
+    expect(defaultConfig().largeDiffThreshold).toBe(500);
+    expect(parseConfig("").largeDiffThreshold).toBe(500);
+  });
+
+  test("reads a positive integer", () => {
+    expect(parseConfig(`largeDiffThreshold = 120`).largeDiffThreshold).toBe(120);
+  });
+
+  test("0 disables collapsing and is kept as 0", () => {
+    expect(parseConfig(`largeDiffThreshold = 0`).largeDiffThreshold).toBe(0);
+  });
+
+  /** Values that are not a non-negative integer fall back to the default. */
+  const INVALID: string[] = [`largeDiffThreshold = "big"`, `largeDiffThreshold = -5`, `largeDiffThreshold = 1.5`];
+  test.each(INVALID)("falls back to the default for invalid: %p", (toml) => {
+    expect(parseConfig(toml).largeDiffThreshold).toBe(500);
+  });
+});

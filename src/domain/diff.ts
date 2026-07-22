@@ -72,6 +72,14 @@ export function parseUnifiedDiff(text: string): FileDiff[] {
   return splitFileChunks(text).map(parseFileChunk);
 }
 
+/**
+ * Count a hunk's changed lines — additions plus deletions, ignoring unchanged
+ * context. This is the size metric used to decide whether a hunk is "large".
+ */
+export function changedLineCount(lines: readonly DiffLine[]): number {
+  return lines.reduce((n, l) => (l.kind === "ctx" ? n : n + 1), 0);
+}
+
 /** Split raw diff text into per-file line groups, each starting at `diff --git`. */
 function splitFileChunks(text: string): string[][] {
   const chunks: string[][] = [];

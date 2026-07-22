@@ -1,6 +1,6 @@
 import { isLockfile } from "@/domain/lockfiles.ts";
 import { commentAnchorHash, type DiffSide } from "@/domain/hash.ts";
-import { parseUnifiedDiff, type DiffLine, type FileStatus } from "@/domain/diff.ts";
+import { changedLineCount, parseUnifiedDiff, type DiffLine, type FileStatus } from "@/domain/diff.ts";
 import { parseWordDiff, withWordChanges, type FileWordChanges } from "@/domain/wordDiff.ts";
 import type { CommentKind, CommentRow } from "@/db/repositories/comments.ts";
 import type { GithubThread } from "./githubThreads.ts";
@@ -47,6 +47,13 @@ export interface HunkView {
   newLines: number;
   /** The hunk's lines. */
   lines: DiffLine[];
+  /** Changed lines in the hunk (additions + deletions, context excluded). */
+  changedLines: number;
+  /**
+   * True when the hunk meets the large-diff threshold and should render behind a
+   * "Load diff" button by default. False when the threshold is 0 (disabled).
+   */
+  isLarge: boolean;
   /** Whether this hunk is marked viewed. */
   viewed: boolean;
   /** Comments anchored within this hunk. */
@@ -86,6 +93,11 @@ export interface BuildRangeDeps {
   isViewed: (hunkHash: string) => boolean;
   /** Lock/generated-file glob patterns. */
   lockfilePatterns: readonly string[];
+  /**
+   * Changed-line count at or above which a hunk is marked large (collapsed
+   * behind "Load diff"). 0 or omitted disables collapsing.
+   */
+  largeDiffThreshold?: number;
   /** All stored comments (attached to matching hunks/lines). */
   comments?: readonly CommentRow[];
   /** Synced GitHub threads (attached to matching hunks/lines). */
@@ -130,20 +142,26 @@ export async function buildRangeView(
   const comments: readonly CommentRow[] = (deps.comments ?? []).filter(
     (c) => c.githubId === null || !syncedRootIds.has(c.githubId),
   );
+  const threshold: number = deps.largeDiffThreshold ?? 0;
   return parseUnifiedDiff(raw).map((file) => {
     const fc = wordChanges.forFile(file.oldPath, file.newPath);
-    const hunks: HunkView[] = file.hunks.map((h) => ({
-      hash: h.hash,
-      header: h.header,
-      oldStart: h.oldStart,
-      oldLines: h.oldLines,
-      newStart: h.newStart,
-      newLines: h.newLines,
-      lines: withWordChanges(h.lines, fc),
-      viewed: deps.isViewed(h.hash),
-      comments: anchorComments(file.newPath, h.hash, h.lines, comments),
-      githubThreads: anchorGithubThreads(file.newPath, h.lines, threads),
-    }));
+    const hunks: HunkView[] = file.hunks.map((h) => {
+      const changedLines: number = changedLineCount(h.lines);
+      return {
+        hash: h.hash,
+        header: h.header,
+        oldStart: h.oldStart,
+        oldLines: h.oldLines,
+        newStart: h.newStart,
+        newLines: h.newLines,
+        lines: withWordChanges(h.lines, fc),
+        changedLines,
+        isLarge: threshold > 0 && changedLines >= threshold,
+        viewed: deps.isViewed(h.hash),
+        comments: anchorComments(file.newPath, h.hash, h.lines, comments),
+        githubThreads: anchorGithubThreads(file.newPath, h.lines, threads),
+      };
+    });
     return {
       oldPath: file.oldPath,
       newPath: file.newPath,

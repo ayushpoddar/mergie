@@ -28,6 +28,12 @@ export interface MergieConfig {
   models: ModelChoice[];
   /** Available AI-review templates. */
   templates: ReviewTemplate[];
+  /**
+   * A hunk with at least this many changed lines (additions + deletions) is
+   * hidden behind a "Load diff" button until requested. `0` disables collapsing
+   * (every hunk renders). Default 500.
+   */
+  largeDiffThreshold: number;
 }
 
 /** Built-in lock/generated-file patterns; user patterns extend these. */
@@ -43,6 +49,9 @@ const DEFAULT_MODELS: readonly ModelChoice[] = [
   { id: "claude-sonnet-4-6", label: "Sonnet 4.6" },
   { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5" },
 ];
+
+/** Default changed-line count above which a hunk is collapsed behind "Load diff". */
+const DEFAULT_LARGE_DIFF_THRESHOLD = 500;
 
 /** Built-in AI-review templates (from SPEC). */
 const DEFAULT_TEMPLATES: readonly ReviewTemplate[] = [
@@ -64,6 +73,7 @@ export function defaultConfig(): MergieConfig {
     lockfilePatterns: [...DEFAULT_LOCKFILE_PATTERNS],
     models: DEFAULT_MODELS.map((m) => ({ ...m })),
     templates: DEFAULT_TEMPLATES.map((t) => ({ ...t })),
+    largeDiffThreshold: DEFAULT_LARGE_DIFF_THRESHOLD,
   };
 }
 
@@ -85,6 +95,7 @@ export function parseConfig(tomlText: string): MergieConfig {
     lockfilePatterns: dedupe([...base.lockfilePatterns, ...userPatterns]),
     models: models ?? base.models,
     templates: templates ?? base.templates,
+    largeDiffThreshold: nonNegInt(rec.largeDiffThreshold) ?? base.largeDiffThreshold,
   };
 }
 
@@ -107,6 +118,11 @@ function dedupe(items: string[]): string[] {
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** A non-negative integer, or undefined for any other value. */
+function nonNegInt(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : undefined;
 }
 
 function stringArray(v: unknown): string[] | undefined {

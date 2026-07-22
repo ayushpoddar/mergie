@@ -345,6 +345,7 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
           wordDiff: (s, e) => git.rawWordDiff(s, e, undefined, ignoreWhitespace),
           isViewed: (h) => views.isViewed(h),
           lockfilePatterns: config.lockfilePatterns,
+          largeDiffThreshold: config.largeDiffThreshold,
           comments: comments.listAll(),
           githubThreads: cachedThreads(),
         },

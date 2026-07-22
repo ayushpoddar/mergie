@@ -87,7 +87,8 @@ serves **multiple PRs at once**, switchable inside the UI.
 - **Config (optional):** mergie runs on built-in defaults and **creates no config file**. To
   override them, create `$XDG_CONFIG_HOME/mergie/config.toml` yourself (falling back to
   `~/.config/mergie/config.toml` when `XDG_CONFIG_HOME` is unset). It can set `lockfilePatterns` (which **extend** the built-in lock/generated globs),
-  `models` (the selectable Claude model list), and `templates` (AI-review prompts) — the latter two
+  `models` (the selectable Claude model list), `templates` (AI-review prompts), and
+  `largeDiffThreshold` (when a hunk collapses behind "Load diff") — `models`/`templates`
   **replace** the defaults when present. An absent or empty config dir is normal.
 - **Port:** the daemon binds **4517**; set `MERGIE_PORT` to change it. Combined with
   `XDG_DATA_HOME`, this lets a second, isolated instance run alongside the first.
@@ -101,6 +102,10 @@ Every section is optional — include only what you want to change. Unknown keys
 # Extra lock/generated globs. ADDED on top of the built-in set (package-lock.json,
 # yarn.lock, *.min.js, …), so listing these does not disable the defaults.
 lockfilePatterns = ["*.generated.ts", "src/api/schema.ts"]
+
+# A hunk with at least this many changed lines (additions + deletions) is hidden
+# behind a "Load diff" button until you ask for it. Default 500; set 0 to disable.
+largeDiffThreshold = 500
 
 # Selectable Claude models. REPLACES the default list, so include every model you want.
 #   id    — passed to the Claude Agent SDK (required)

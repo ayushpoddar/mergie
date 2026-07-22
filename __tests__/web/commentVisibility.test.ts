@@ -25,7 +25,7 @@ function file(over: { newPath?: string; hash?: string; localIds?: number[]; gith
     viewed: false,
     hunks: [{
       hash: over.hash ?? "h1", header: "@@", oldStart: 1, oldLines: 1, newStart: 1, newLines: 1,
-      lines: [], viewed: false,
+      lines: [], changedLines: 0, isLarge: false, viewed: false,
       comments: localIds.map((id) => ({
         id, body: "b", side: "RIGHT", kind: "lines", lineIndex: 0,
         createdAt: 1, updatedAt: 1, githubUrl: null,
