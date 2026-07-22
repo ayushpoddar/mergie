@@ -45,12 +45,35 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 - The daemon binds port **4517** by default; setting **`MERGIE_PORT`** overrides it. Combined with
   `XDG_DATA_HOME` (see §4), this lets a **second, isolated instance** (e.g. a dev build) run
   alongside the primary daemon without sharing its port or data.
-- **Source-run guard.** Running mergie directly from a source checkout (a bare `bin/mergie.ts`)
+- **Source-run guard.** Running mergie directly from a source checkout (a bare `src/main.ts`)
   would land on the default port + real data dir and clash with the installed daily-driver
   instance. So a bare run **refuses to start** and points to the isolated dev launcher instead.
   The guard fires only from a source checkout (detected by a `.git` entry at the repo root — never
   present in the published package or a `bunx` cache); it is bypassed by `MERGIE_DEV=1` (which the
   dev launcher sets) or `MERGIE_FORCE=1` (a manual override).
+
+### Startup checks
+
+mergie verifies its environment before doing work, so a misconfigured machine fails with clear
+guidance instead of a cryptic error midway.
+
+- **Runtime launcher.** The installed `mergie` command is a small launcher that runs under the
+  package manager's shim (node for npm/pnpm, bun for `bunx`/`bun install -g`). If **Bun is not on
+  PATH**, it prints install guidance (`https://bun.sh`) and exits — instead of the raw
+  `env: bun: not found` you'd otherwise get when installed via a non-bun package manager. When Bun
+  is present it hands off to the real program.
+- **Hard checks** run on the open flows (no-arg, `--pr`, `reload`) — the ones that need GitHub —
+  and **abort the command with next steps** if any fails:
+  - **Bun version** is at least the supported minimum (currently 1.2); older prints an upgrade hint.
+  - **`gh` is installed** (used for the GitHub API and cloning); if missing, points to
+    `https://cli.github.com` and `gh auth login`.
+  - **`gh` is authenticated** (`gh auth status`); if not, points to `gh auth login`.
+  - `mergie stop` / `mergie status` are **exempt** — they only control an already-running daemon.
+- **Soft checks** run after the daemon is up, on every open flow, and **warn (never block)** for
+  each missing optional tool, naming the feature that won't work and how to install it:
+  - **`rg`** (ripgrep) — General text/regex search.
+  - **`sem`** — Symbol definition/usages lookups.
+  - **`claude`** — AI review & chat.
 
 ## 2. Authentication
 

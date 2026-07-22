@@ -29,4 +29,4 @@ export const ROOT: string = join(dirname(fileURLToPath(import.meta.url)), "..", 
 export const DIST_DIR: string = join(ROOT, "dist", "web");
 
 /** Path to the CLI entry script (used to spawn the daemon process). */
-export const BIN_PATH: string = join(ROOT, "bin", "mergie.ts");
+export const BIN_PATH: string = join(ROOT, "src", "main.ts");

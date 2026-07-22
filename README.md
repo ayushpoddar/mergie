@@ -39,6 +39,11 @@ review (just the new commits since last time) awkward, and can't help you naviga
 - *(Optional, for AI features)* Claude access for the Claude Agent SDK — e.g. an
   `ANTHROPIC_API_KEY` in your environment.
 
+mergie **checks these at startup**: it stops with install guidance if Bun or `gh` is missing (or
+`gh` isn't signed in), and prints a one-line warning for each missing optional tool (`rg`, `sem`,
+`claude`) naming the feature it disables. If you install via a non-Bun package manager (npm/pnpm)
+on a machine without Bun, you get a clear "install Bun" message rather than a cryptic error.
+
 ## Install
 
 ```sh

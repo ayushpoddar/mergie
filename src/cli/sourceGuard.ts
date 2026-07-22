@@ -21,7 +21,7 @@ export interface SourceGuardInput {
 
 /**
  * True when mergie is being launched directly from a source checkout without
- * the dev wrapper — a bare `bin/mergie.ts` run that would collide with the
+ * the dev wrapper — a bare `src/main.ts` run that would collide with the
  * primary daemon (port 4517 + your real data dir).
  *
  * A source checkout is detected by a `.git` entry at {@link SourceGuardInput.root}

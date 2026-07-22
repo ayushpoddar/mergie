@@ -39,10 +39,10 @@ this file; put them in `SPEC.md`.
 
 The primary daemon (the user's live review sessions) runs on **port 4517** with data under
 `~/.config/mergie`. When invoking mergie from inside a **git worktree**, never run the plain
-`mergie` command or `bun run bin/mergie.ts` directly — both would collide with that primary
+`mergie` command or `bun run src/main.ts` directly — both would collide with that primary
 daemon (same port and, unless overridden, same data dir) and disturb ongoing reviews.
 
-A bare `bin/mergie.ts` run is now **blocked by a source-run guard** (it detects the repo's `.git`
+A bare `src/main.ts` run is now **blocked by a source-run guard** (it detects the repo's `.git`
 and exits with guidance) precisely to prevent this collision. Instead, always launch via
 **`bin/mergie-dev`**, which runs an **isolated** instance:
 - its own port (`MERGIE_PORT`, default **4518**),

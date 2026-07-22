@@ -2,9 +2,17 @@ import type { Command } from "./args.ts";
 import { DAEMON_URL } from "./constants.ts";
 import { ensureDaemon, isHealthy, makeClient } from "./daemonClient.ts";
 import { openBrowser } from "./openBrowser.ts";
+import { bunProbe, runHardChecks, runSoftChecks } from "./preflight.ts";
 
 /** Execute a parsed CLI {@link Command}. */
 export async function runCli(cmd: Command): Promise<void> {
+  // Hard preflight runs only for flows that start/use the daemon and need gh;
+  // stop/status just control an existing daemon and are exempt.
+  if (cmd.kind === "review" || cmd.kind === "open" || cmd.kind === "reload") {
+    const errors: string[] = await runHardChecks(bunProbe);
+    if (errors.length > 0) throw new Error(errors.join("\n\n"));
+  }
+
   if (cmd.kind === "review") return runReview(cmd.url, cmd.noOpen);
   if (cmd.kind === "open") return runOpen(cmd.noOpen);
   if (cmd.kind === "reload") return runReload(cmd.noOpen);
@@ -12,15 +20,24 @@ export async function runCli(cmd: Command): Promise<void> {
   return runStatus();
 }
 
+/** Emit a warning for each missing optional tool (rg/sem/claude). */
+async function warnMissingOptionalTools(): Promise<void> {
+  for (const warning of await runSoftChecks(bunProbe)) {
+    console.error(`\nwarning: ${warning}`);
+  }
+}
+
 /** Open the home picker (no PR selected). */
 async function runOpen(noOpen: boolean): Promise<void> {
   await ensureDaemon();
+  await warnMissingOptionalTools();
   await maybeOpen(`${DAEMON_URL}/`, noOpen);
 }
 
 /** Load a PR by URL and open it directly. */
 async function runReview(url: string, noOpen: boolean): Promise<void> {
   await ensureDaemon();
+  await warnMissingOptionalTools();
   const pr = await makeClient().loadPr.mutate({ url });
   console.log(`Loaded ${pr.owner}/${pr.repo} #${pr.number}: ${pr.title}`);
   await maybeOpen(`${DAEMON_URL}/?pr=${pr.id}`, noOpen);
