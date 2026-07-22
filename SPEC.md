@@ -218,7 +218,8 @@ guidance instead of a cryptic error midway.
     panel; links open in a new tab. If the PR has no body it shows a muted "No description
     provided." The body is fetched from GitHub with the PR metadata and is kept current by
     **Refresh PR**.
-- Layout: a **left sidebar** (holding the "View" switches, the file filter, and the **file tree**);
+- Layout: a **left sidebar** (holding the "View" switches, the file filter, and the **file list —
+  flat or folder tree**, see below);
   **diffs** in the main area; the **right icon rail** pinned to the right edge.
 - **Collapsible left sidebar:** a **chevron button at the top of the sidebar** collapses it to a
   **slim strip pinned at the left edge** holding just an **expand button**; the diff area widens to
@@ -292,7 +293,22 @@ guidance instead of a cryptic error midway.
   (§ range selector) is a separate concept and does not fill it. When the range has no hunks the row
   falls back to the plain **"View"** label; the ring is hidden when the sidebar is collapsed. There
   is deliberately **no progress indicator on the PR list.**
-- The **file tree has a fuzzy search** over file names.
+- **File list, two views.** The left sidebar's file list can switch between a **flat list**
+  (every changed file as one row showing its full repo-relative path) and a **folder tree**. A
+  small **List / Tree segmented control** sits directly under the filter box. The **tree is
+  GitHub-style:** folders are **collapsible** (click to expand/collapse), and a chain of
+  **single-child folders is compressed into one row** (e.g. `src/web/components` shows as a single
+  entry rather than three nested levels). Folders are sorted before files, each group
+  alphabetically. The **view choice is a global preference remembered across reloads and
+  navigation** (not per-PR); **tree is the default** on a fresh install.
+- **File search over file names is fuzzy and affects only the sidebar list — never the diff.**
+  Typing in **"Filter files…"** narrows the file list to matches (ranked by match quality) so you
+  can jump to a file quickly, but the **main diff area keeps showing every file** in the current
+  range (still subject to the visibility toggles, which do apply to both). Clearing the filter
+  restores the full list. In **tree view an active filter prunes the tree** to matching files and
+  **auto-expands** every folder so the matches are visible; you can **still collapse folders while
+  filtering** (those collapses are transient — discarded when the search changes or clears).
+  Clearing the filter returns to the tree with its previous, pre-search expand/collapse state.
 - **Every text box** in the UI (comments, chat, review output, etc.) has a **copy button**; it
   briefly confirms with a **"Copied!"** label after a click so the otherwise-silent clipboard
   write is visible.

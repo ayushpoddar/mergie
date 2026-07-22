@@ -12,11 +12,13 @@ export interface VisibilityToggles {
 }
 
 /**
- * Compute the files to render given the fuzzy search query and the visibility
- * toggles. Pure — does not mutate its inputs.
+ * Compute the files to render given the visibility toggles. This drives BOTH
+ * the main diff area and the sidebar list, so the two never diverge. The file
+ * search query is applied separately ({@link searchFiles}) so that typing in
+ * the filter narrows only the sidebar, not the diff. Pure — does not mutate its
+ * inputs.
  *
  * @param files   The full file list for the range.
- * @param query   Fuzzy search text over file paths (empty = no filter).
  * @param toggles Active visibility toggles.
  * @param reveal  Hunk hashes to always show even when a toggle would hide them
  *                (used to jump to a comment on a toggled-away hunk without
@@ -24,13 +26,11 @@ export interface VisibilityToggles {
  */
 export function visibleFiles(
   files: readonly FileView[],
-  query: string,
   toggles: VisibilityToggles,
   reveal: ReadonlySet<string> = new Set(),
 ): FileView[] {
-  const ordered: FileView[] = applyQuery(files, query);
   const result: FileView[] = [];
-  for (const file of ordered) {
+  for (const file of files) {
     const fileRevealed: boolean = file.hunks.some((h) => reveal.has(h.hash));
     if (toggles.hideLockFiles && file.isLockfile && !fileRevealed) continue;
     if (toggles.hideViewedFiles && file.viewed && !fileRevealed) continue;
@@ -43,8 +43,12 @@ export function visibleFiles(
   return result;
 }
 
-/** Order files by fuzzy match when a query is present; otherwise keep order. */
-function applyQuery(files: readonly FileView[], query: string): FileView[] {
+/**
+ * Narrow a file list to the fuzzy-search query, ranked by match quality. Used
+ * for the sidebar file list only. An empty query returns every file in its
+ * original order. Pure — does not mutate its inputs.
+ */
+export function searchFiles(files: readonly FileView[], query: string): FileView[] {
   if (query.length === 0) return [...files];
   const ranked: string[] = fuzzyFilter(query, files.map((f) => f.newPath));
   const byPath = new Map(files.map((f) => [f.newPath, f]));

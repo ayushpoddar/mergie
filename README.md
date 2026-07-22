@@ -23,8 +23,9 @@ review (just the new commits since last time) awkward, and can't help you naviga
   review threads are synced in.
 - **AI review & chat (optional)** — get an AI pass over a range, or ask questions about a hunk or
   file, powered by the Claude Agent SDK.
-- **Made for big diffs** — fuzzy file search, symbol/code search across the PR, word-level diff
-  highlighting, and filters to hide viewed, lock/generated, or whitespace-only changes.
+- **Made for big diffs** — a **flat or folder-tree** file list, fuzzy file search (that narrows the
+  list without touching the diff), symbol/code search across the PR, word-level diff highlighting,
+  and filters to hide viewed, lock/generated, or whitespace-only changes.
 
 ## Requirements
 

@@ -3,6 +3,20 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.4.0] - 2026-07-23
+
+### Added
+- **Folder-tree file list.** The left sidebar's file list can now switch between a flat list and a
+  GitHub-style **folder tree** via a List / Tree control under the filter box. Folders are
+  collapsible, and single-child folder chains are compressed into one row (e.g. `src/web/components`
+  shows as a single entry). The view choice is remembered across reloads; tree is the default.
+
+### Changed
+- **The file filter no longer hides files from the diff.** Typing in "Filter files…" now narrows
+  only the sidebar list (for quick navigation); the main diff keeps showing every file in the range.
+  The hide-viewed / hide-lock switches still apply to both, as before. In tree view an active filter
+  prunes the tree to matches and auto-expands them.
+
 ## [0.3.0] - 2026-07-22
 
 ### Added
@@ -55,6 +69,7 @@ This project adheres to [Semantic Versioning](https://semver.org).
   symbol search, and filters to hide viewed, lock/generated, or whitespace-only changes.
 - Ships a **prebuilt UI**, so `bun install -g mergie-cli` needs no build toolchain.
 
+[0.4.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.0

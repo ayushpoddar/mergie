@@ -32,6 +32,33 @@ function Svg(props: IconProps & { children: React.ReactNode }): React.JSX.Elemen
   );
 }
 
+/** Flat bulleted-list glyph — the "flat file list" view switch. */
+export function ListIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Svg {...props}>
+      <line x1="9" y1="6" x2="20" y2="6" />
+      <line x1="9" y1="12" x2="20" y2="12" />
+      <line x1="9" y1="18" x2="20" y2="18" />
+      <circle cx="4.5" cy="6" r="1" />
+      <circle cx="4.5" cy="12" r="1" />
+      <circle cx="4.5" cy="18" r="1" />
+    </Svg>
+  );
+}
+
+/** Indented tree glyph — the "folder tree" view switch. */
+export function TreeIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Svg {...props}>
+      <line x1="4" y1="4" x2="20" y2="4" />
+      <path d="M6 4v8h5" />
+      <path d="M11 12h9" />
+      <path d="M6 12v6h5" />
+      <path d="M11 18h9" />
+    </Svg>
+  );
+}
+
 /** Circular refresh / re-fetch arrows. */
 export function RefreshIcon(props: IconProps): React.JSX.Element {
   return (

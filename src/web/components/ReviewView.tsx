@@ -3,7 +3,7 @@ import { trpc } from "../trpc.ts";
 import { useReview, type ReviewState, type RangeSel } from "../state/useReview.ts";
 import { useCodeSearch, type MenuOp, type SearchSide } from "../state/useCodeSearch.ts";
 import { useChat, type ChatState } from "../state/useChat.ts";
-import { visibleFiles } from "@/web/lib/visibleFiles.ts";
+import { visibleFiles, searchFiles } from "@/web/lib/visibleFiles.ts";
 import { reviewProgress } from "@/web/lib/reviewProgress.ts";
 import { usePersistedToggles, hideWhitespaceStorageKey } from "@/web/lib/togglePrefs.ts";
 import { usePersistedFlag } from "@/web/lib/persistedFlag.ts";
@@ -32,6 +32,9 @@ import type { FileView } from "@/daemon/reviewService.ts";
 /** localStorage key for the global left-sidebar collapsed layout preference. */
 const LEFT_SIDEBAR_COLLAPSED_KEY = "mergie:leftSidebarCollapsed";
 
+/** localStorage key for the global file-list view (tree vs flat) preference. */
+const FILE_TREE_VIEW_KEY = "mergie:fileTreeView";
+
 /** Circumference of the progress ring (radius 14) — used to drive its fill. */
 const RING_CIRCUMFERENCE = 2 * Math.PI * 14;
 
@@ -55,6 +58,7 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
   const [query, setQuery] = useState("");
   const [toggles, setToggles] = usePersistedToggles(props.prId);
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedFlag(LEFT_SIDEBAR_COLLAPSED_KEY, false);
+  const [treeView, setTreeView] = usePersistedFlag(FILE_TREE_VIEW_KEY, true);
   // The frame the file navigator is seeded with; null = navigator closed.
   const [navOrigin, setNavOrigin] = useState<NavFrame | null>(null);
   const diffMenu = useIdentifierMenu();
@@ -88,7 +92,10 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
   const health = trpc.health.useQuery();
   const pr = health.data?.prs.find((p) => p.id === props.prId);
   usePageTitle(pr ? `${pr.owner}/${pr.repo} #${pr.number} — ${pr.title}` : null);
-  const files: FileView[] = visibleFiles(review.files, query, toggles, revealedHunks);
+  // The diff area and the sidebar share the same toggle-filtered set; the
+  // search box narrows only the sidebar (`listed`), never the diff (`files`).
+  const files: FileView[] = visibleFiles(review.files, toggles, revealedHunks);
+  const listed: FileView[] = searchFiles(files, query);
   // Progress counts the whole on-screen range, so view filters don't skew it.
   const progress = reviewProgress(review.files);
   const remaining: number = progress.total - progress.viewed;
@@ -205,7 +212,13 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
               switch states are never lost across a collapse/expand. */}
           <div className="sidebar-content">
             <Toolbar toggles={toggles} onChange={setToggles} hideWhitespace={hideWhitespace} onHideWhitespaceChange={setHideWhitespace} />
-            <FileTree files={files} query={query} onQuery={setQuery} />
+            <FileTree
+              files={listed}
+              query={query}
+              onQuery={setQuery}
+              treeView={treeView}
+              onTreeViewChange={setTreeView}
+            />
           </div>
         </aside>
         <main className="diff-area" onMouseUp={diffMenu.onMouseUp}>

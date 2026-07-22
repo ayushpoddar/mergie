@@ -403,7 +403,34 @@ input[type="checkbox"] {
 /* Higher-specificity selector so the icon-clearing left padding wins over the
    base input padding shorthand (input[type="search"], 0,1,1). */
 .file-search-wrap .file-search { width: 100%; padding: 6px 10px 6px 30px; }
+
+/* Flat/tree view switch — a small segmented control under the filter box. */
+.file-view-switch {
+  display: flex; margin: 0 var(--sp-3) var(--sp-2);
+  border: 1px solid var(--border); border-radius: var(--radius-control); overflow: hidden;
+}
+.view-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0; border: none; background: var(--surface); color: var(--muted);
+  font-size: var(--fs-caption); cursor: pointer; transition: background 0.12s ease, color 0.12s ease;
+}
+.view-btn + .view-btn { border-left: 1px solid var(--border); }
+.view-btn:hover { background: var(--gray-100); color: var(--text); }
+.view-btn.active { background: var(--accent); color: #fff; font-weight: 600; }
+.view-btn.active:hover { background: var(--accent-hover); color: #fff; }
+
 .file-tree ul { list-style: none; margin: 0; padding: 0 var(--sp-2) var(--sp-2); }
+/* Nested tree levels indent progressively; a folder's children sit under it. */
+.file-tree-level .file-tree-level { padding: 0 0 0 var(--sp-3); }
+.tree-dir-toggle {
+  display: flex; align-items: center; gap: var(--sp-1); width: 100%;
+  padding: 5px 8px; border: none; border-radius: var(--radius-control);
+  background: transparent; color: var(--muted); cursor: pointer;
+  font-size: var(--fs-caption); text-align: left;
+}
+.tree-dir-toggle:hover { background: var(--gray-100); color: var(--text); }
+.tree-dir-toggle .icon { flex: none; }
+.tree-dir-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-item a {
   display: flex; align-items: center; gap: var(--sp-2); padding: 6px 8px; border-radius: var(--radius-control);
   text-decoration: none; color: var(--text); font-size: var(--fs-caption);
