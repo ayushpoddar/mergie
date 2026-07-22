@@ -1,0 +1,121 @@
+name: Release
+
+# Runs on every push to main. A pull request being merged into main produces a
+# push event on main, so this one trigger covers both "commits pushed to main"
+# and "a PR merged into main".
+on:
+  push:
+    branches: [main]
+
+# Only one release runs at a time; a later push waits rather than racing the
+# in-flight tag/publish.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push the auto patch-bump commit and the version tag
+  id-token: write # OIDC identity for npm trusted publishing (no NPM_TOKEN)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest # trusted publishing requires a GitHub-hosted runner
+    steps:
+      - name: Checkout (full history for version diff + tagging)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24" # >= 22.14 required by npm trusted publishing
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm (trusted publishing needs npm >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Gate the release on a green build — never bump/tag/publish a broken tree.
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun test
+
+      # Compare the version field in package.json between the parent of this push
+      # and its head. If it changed, the push already carried an intentional bump
+      # (e.g. a `chore(release)` commit) and we leave it alone.
+      - name: Detect whether this push already bumped the version
+        id: detect
+        run: |
+          set -euo pipefail
+          before='${{ github.event.before }}'
+          current="$(jq -r .version package.json)"
+          previous=''
+          if [[ "$before" =~ ^0+$ ]] || ! git cat-file -e "${before}^{commit}" 2>/dev/null; then
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              previous="$(git show HEAD~1:package.json 2>/dev/null | jq -r .version 2>/dev/null || true)"
+            fi
+          else
+            previous="$(git show "${before}:package.json" 2>/dev/null | jq -r .version 2>/dev/null || true)"
+          fi
+          echo "current=${current}" >> "$GITHUB_OUTPUT"
+          if [[ -n "$previous" && "$previous" != "$current" ]]; then
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "Version already bumped in this push: ${previous} -> ${current}."
+          else
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "No version change in this push (still ${current}); will patch-bump."
+          fi
+
+      # `[skip ci]` (plus the fact that GITHUB_TOKEN pushes never re-trigger
+      # workflows) stops this bump commit from starting a second Release run.
+      - name: Auto patch-bump (only when the push carried no bump)
+        if: steps.detect.outputs.bumped == 'false'
+        run: |
+          set -euo pipefail
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          new="$(npm version patch --no-git-tag-version)"
+          git add package.json
+          git commit -m "chore(release): ${new} [skip ci]"
+          git push origin HEAD:main
+
+      - name: Resolve the version to release
+        id: ver
+        run: |
+          set -euo pipefail
+          v="$(jq -r .version package.json)"
+          echo "version=${v}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${v}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag the release (skip if the tag already exists)
+        run: |
+          set -euo pipefail
+          tag='${{ steps.ver.outputs.tag }}'
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            echo "Tag ${tag} already exists on origin; skipping."
+          else
+            git tag "${tag}"
+            git push origin "${tag}"
+          fi
+
+      - name: Publish to npm (skip if this version is already published)
+        run: |
+          set -euo pipefail
+          v='${{ steps.ver.outputs.version }}'
+          if npm view "mergie-cli@${v}" version >/dev/null 2>&1; then
+            echo "mergie-cli@${v} is already on npm; skipping publish."
+          else
+            npm publish --provenance --access public
+          fi
