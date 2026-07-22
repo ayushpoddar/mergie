@@ -3,6 +3,18 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.2.0] - 2026-07-22
+
+### Added
+- **Startup checks.** mergie now verifies its environment before doing work:
+  - If **Bun is not installed**, the `mergie` command prints install guidance instead of a cryptic
+    `env: bun: not found` — so a global install via a non-Bun package manager (npm/pnpm) on a
+    machine without Bun fails clearly.
+  - On the open flows (`mergie`, `--pr`, `reload`), mergie **aborts with next steps** if Bun is
+    older than 1.2, or if `gh` is missing or not signed in. `stop`/`status` are exempt.
+  - It **warns** (without blocking) for each missing optional tool, naming the disabled feature:
+    `rg` (General search), `sem` (Symbol lookups), `claude` (AI review & chat).
+
 ## [0.1.1] - 2026-07-21
 
 ### Fixed
@@ -25,5 +37,6 @@ This project adheres to [Semantic Versioning](https://semver.org).
   symbol search, and filters to hide viewed, lock/generated, or whitespace-only changes.
 - Ships a **prebuilt UI**, so `bun install -g mergie-cli` needs no build toolchain.
 
+[0.2.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.0
 [0.1.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.1.0
