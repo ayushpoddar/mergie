@@ -3,6 +3,14 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org).
 
+## [0.2.1] - 2026-07-22
+
+### Added
+- **`mergie help` and `mergie version`.** `mergie version` (`-v`/`--version`) prints the installed
+  version; `mergie help` (`-h`/`--help`) prints full usage, and `mergie help <command>` prints
+  help for one command. `-h`/`-v` anywhere on the line win over the rest (help beats version), and
+  parse errors now point at the matching `mergie help` command.
+
 ## [0.2.0] - 2026-07-22
 
 ### Added
@@ -37,6 +45,7 @@ This project adheres to [Semantic Versioning](https://semver.org).
   symbol search, and filters to hide viewed, lock/generated, or whitespace-only changes.
 - Ships a **prebuilt UI**, so `bun install -g mergie-cli` needs no build toolchain.
 
+[0.2.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.2.0
 [0.1.1]: https://github.com/ayushpoddar/mergie/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ayushpoddar/mergie/releases/tag/v0.1.0

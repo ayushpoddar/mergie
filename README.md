@@ -63,6 +63,9 @@ mergie --no-open                                        # start/attach but don't
 mergie reload                                           # restart the daemon (pick up UI changes)
 mergie status                                           # is it running? which PRs are loaded?
 mergie stop                                             # stop the daemon
+mergie help                                             # full usage (also -h / --help)
+mergie help stop                                        # help for one command
+mergie version                                          # installed version (also -v / --version)
 ```
 
 The URL is parsed tolerantly — trailing `/files`, `/changes`, `#…` are ignored. The first call

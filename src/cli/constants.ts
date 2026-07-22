@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { parsePackageVersion } from "./help.ts";
 
 /** Port the daemon binds to when `MERGIE_PORT` is unset or invalid. */
 export const DEFAULT_PORT = 4517;
@@ -30,3 +32,6 @@ export const DIST_DIR: string = join(ROOT, "dist", "web");
 
 /** Path to the CLI entry script (used to spawn the daemon process). */
 export const BIN_PATH: string = join(ROOT, "src", "main.ts");
+
+/** Installed mergie version, read from the package manifest at the repo root. */
+export const VERSION: string = parsePackageVersion(readFileSync(join(ROOT, "package.json"), "utf8"));

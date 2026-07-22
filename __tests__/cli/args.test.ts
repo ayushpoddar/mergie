@@ -15,6 +15,22 @@ const VALID: Array<[string[], Command]> = [
   [["--pr", "https://github.com/o/r/pull/3", "--no-open"], { kind: "review", url: "https://github.com/o/r/pull/3", noOpen: true }],
   [["--no-open", "--pr", "https://github.com/o/r/pull/4"], { kind: "review", url: "https://github.com/o/r/pull/4", noOpen: true }],
   [["reload", "--no-open"], { kind: "reload", noOpen: true }],
+  // version, in every spelling.
+  [["version"], { kind: "version" }],
+  [["-v"], { kind: "version" }],
+  [["--version"], { kind: "version" }],
+  // help, general.
+  [["help"], { kind: "help" }],
+  [["-h"], { kind: "help" }],
+  [["--help"], { kind: "help" }],
+  // help for a specific command, via subcommand or flag form.
+  [["help", "stop"], { kind: "help", command: "stop" }],
+  [["help", "reload"], { kind: "help", command: "reload" }],
+  [["stop", "--help"], { kind: "help", command: "stop" }],
+  [["reload", "-h"], { kind: "help", command: "reload" }],
+  // version/help short-circuit and win over other arguments; help beats version.
+  [["--pr", "https://github.com/o/r/pull/5", "-v"], { kind: "version" }],
+  [["-v", "--help"], { kind: "help" }],
 ];
 
 describe("parseArgs", () => {
@@ -32,5 +48,9 @@ describe("parseArgs", () => {
 
   test("rejects --no-open combined with stop", () => {
     expect(() => parseArgs(["stop", "--no-open"])).toThrow();
+  });
+
+  test("rejects help for an unknown command", () => {
+    expect(() => parseArgs(["help", "frobnicate"])).toThrow();
   });
 });

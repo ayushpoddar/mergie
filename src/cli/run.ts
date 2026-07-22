@@ -1,11 +1,22 @@
 import type { Command } from "./args.ts";
-import { DAEMON_URL } from "./constants.ts";
+import { DAEMON_URL, VERSION } from "./constants.ts";
 import { ensureDaemon, isHealthy, makeClient } from "./daemonClient.ts";
+import { commandHelp, formatVersion, generalHelp } from "./help.ts";
 import { openBrowser } from "./openBrowser.ts";
 import { bunProbe, runHardChecks, runSoftChecks } from "./preflight.ts";
 
 /** Execute a parsed CLI {@link Command}. */
 export async function runCli(cmd: Command): Promise<void> {
+  // version/help just print and exit — no daemon, no preflight.
+  if (cmd.kind === "version") {
+    console.log(formatVersion(VERSION));
+    return;
+  }
+  if (cmd.kind === "help") {
+    console.log(cmd.command ? (commandHelp(cmd.command) ?? generalHelp()) : generalHelp());
+    return;
+  }
+
   // Hard preflight runs only for flows that start/use the daemon and need gh;
   // stop/status just control an existing daemon and are exempt.
   if (cmd.kind === "review" || cmd.kind === "open" || cmd.kind === "reload") {

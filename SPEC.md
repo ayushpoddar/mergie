@@ -42,6 +42,16 @@ mergie --pr https://github.com/withastro/astro/pull/17360/changes   # open a PR 
 - `mergie stop` stops the daemon; `mergie status` reports whether it's running and which PRs are
   loaded. Stopping **waits for any in-flight AI work** (a chat turn or review) to finish and persist
   before exiting (up to a 2-minute grace), so a running review is not lost.
+- `mergie version` (also `-v` / `--version`) prints the installed version as `mergie <x.y.z>`.
+  `mergie help` (also `-h` / `--help`) prints the full usage — a one-line summary per command plus
+  the global flags — and `mergie help <command>` prints details for one command (e.g.
+  `mergie help stop`). Both **print and exit 0** without touching the daemon or running the startup
+  checks. When `-h`/`--help` or `-v`/`--version` appears **anywhere** on the line it **wins over
+  the rest** (help beats version if both are present); a command named alongside `--help` (e.g.
+  `mergie stop --help`) shows that command's help.
+- Parse errors point at help: an unknown command or an unknown `help <command>` target says to run
+  `mergie help`; a command-specific mistake (missing `--pr` value, `--no-open` on `stop`/`status`)
+  points to `mergie help <command>`.
 - The daemon binds port **4517** by default; setting **`MERGIE_PORT`** overrides it. Combined with
   `XDG_DATA_HOME` (see §4), this lets a **second, isolated instance** (e.g. a dev build) run
   alongside the primary daemon without sharing its port or data.
