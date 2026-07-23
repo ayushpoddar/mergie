@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./trpc.ts";
+import { sizeKey } from "@/services/ghSearch.ts";
 import type { Context } from "./trpc.ts";
 import type { Workspace } from "./registry.ts";
+import type { PrState } from "@/services/ghPr.ts";
 
 /** Resolve a loaded PR's workspace or throw a NOT_FOUND-style error. */
 function workspaceOrThrow(ctx: Context, id: string): Workspace {
@@ -47,6 +49,25 @@ export const appRouter = router({
   prProgress: publicProcedure
     .input(prInput)
     .query(({ ctx, input }) => ctx.registry.prProgress(input.id)),
+
+  /**
+   * Re-check the current GitHub state (open/closed/merged) of every loaded PR
+   * in one batched call, fold the result back into the registry so it persists,
+   * and return the states keyed by PR id. Driven when the PR picker opens.
+   */
+  prStates: publicProcedure.query(async ({ ctx }): Promise<Record<string, PrState>> => {
+    const prs = ctx.registry.listPrs();
+    const byRefKey = await ctx.search.prStates(
+      prs.map((p) => ({ owner: p.owner, repo: p.repo, number: p.number })),
+    );
+    const byId: Record<string, PrState> = {};
+    for (const p of prs) {
+      const state = byRefKey[sizeKey(p)];
+      if (state) byId[p.id] = state;
+    }
+    ctx.registry.applyStates(byId);
+    return byId;
+  }),
 
   /** Load (or attach to) a PR by URL. */
   loadPr: publicProcedure

@@ -5,6 +5,7 @@ import type { ArtifactRow } from "@/db/repositories/artifacts.ts";
 import type { AiReviewRow } from "@/db/repositories/aiReviews.ts";
 import type { AiReviewStatus } from "./aiReviewTracker.ts";
 import type { ModelChoice, ReviewTemplate } from "@/domain/config.ts";
+import type { PrState } from "@/services/ghPr.ts";
 
 /** Options for running an AI review of a commit range. */
 export interface AiReviewOptions {
@@ -270,6 +271,9 @@ export interface LoadedPr {
   updatedAtIso: string;
   /** GitHub login of the PR author. */
   authorLogin: string;
+  /** Lifecycle state on GitHub: open, closed (unmerged), or merged.
+   * Set at load, refreshed by Refresh PR, and re-checked when the picker opens. */
+  state: PrState;
   /** Epoch-ms when this PR was last opened in mergie (drives list ordering). */
   lastOpenedAtMs: number;
 }
@@ -282,6 +286,12 @@ export interface PrRegistry {
   listPrs(): LoadedPr[];
   /** Stamp a loaded PR as opened now; a no-op for an unknown id. */
   touchPr(id: string): void;
+  /**
+   * Overwrite the cached lifecycle state of loaded PRs from a map keyed by PR
+   * id. Unknown ids are ignored. Used to fold a fresh status re-check back into
+   * the registry so it persists for later reads.
+   */
+  applyStates(states: Record<string, PrState>): void;
   /** Whole-PR review progress for a loaded PR (throws if not loaded). */
   prProgress(id: string): Promise<PrProgress>;
   /** A loaded PR by id, or undefined. */

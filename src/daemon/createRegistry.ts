@@ -103,6 +103,7 @@ export function createPrRegistry(deps: RegistryDeps = {}): PrRegistry {
         commitCount: meta.commits.length,
         additions: meta.additions, deletions: meta.deletions, changedFiles: meta.changedFiles,
         createdAtIso: meta.createdAtIso, updatedAtIso: meta.updatedAtIso, authorLogin: meta.authorLogin,
+        state: meta.state,
         lastOpenedAtMs: now(),
       };
       const config: MergieConfig = deps.config ?? loadConfig(deps.pathEnv) ?? defaultConfig();
@@ -119,6 +120,12 @@ export function createPrRegistry(deps: RegistryDeps = {}): PrRegistry {
     getPr: (id) => workspaces.get(id)?.pr,
     getWorkspace: (id) => workspaces.get(id),
     touchPr: (id) => workspaces.get(id)?.touch(),
+    applyStates: (states) => {
+      for (const [id, state] of Object.entries(states)) {
+        const ws = workspaces.get(id);
+        if (ws) ws.pr.state = state;
+      }
+    },
 
     async commits(id: string): Promise<CommitInfo[]> {
       const ws = workspaces.get(id);
@@ -371,6 +378,7 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
       pr.changedFiles = fresh.changedFiles;
       pr.updatedAtIso = fresh.updatedAtIso;
       pr.authorLogin = fresh.authorLogin;
+      pr.state = fresh.state;
       cachedHunkHashes = null;
       await git.cloneOrFetch(remoteUrl, [`refs/pull/${ref.number}/head`, fresh.baseRef]);
       baselineSha = (await git.mergeBase(`origin/${fresh.baseRef}`, fresh.headSha)) || fresh.baseRef;

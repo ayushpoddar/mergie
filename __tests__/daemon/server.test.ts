@@ -11,7 +11,7 @@ const MY_PR: MyPrSummary = {
 };
 
 function fakeSearch(): GhSearchService {
-  return { listMyPrs: async () => [MY_PR], prSizes: async () => ({}) };
+  return { listMyPrs: async () => [MY_PR], prSizes: async () => ({}), prStates: async () => ({}) };
 }
 
 function fakeRegistry(): PrRegistry {
@@ -20,7 +20,7 @@ function fakeRegistry(): PrRegistry {
     async loadPr(url) {
       const pr: LoadedPr = {
         id: `pr-${loaded.length + 1}`, url, owner: "o", repo: "r", number: 1, title: "T", body: "", baseRef: "main", headRef: "feature",
-        commitCount: 0, additions: 0, deletions: 0, changedFiles: 0, createdAtIso: "", updatedAtIso: "", authorLogin: "", lastOpenedAtMs: 0,
+        commitCount: 0, additions: 0, deletions: 0, changedFiles: 0, createdAtIso: "", updatedAtIso: "", authorLogin: "", state: "open", lastOpenedAtMs: 0,
       };
       loaded.push(pr);
       return pr;
@@ -28,6 +28,12 @@ function fakeRegistry(): PrRegistry {
     listPrs: () => loaded,
     getPr: (id) => loaded.find((p) => p.id === id),
     touchPr: () => {},
+    applyStates: (states) => {
+      for (const pr of loaded) {
+        const next = states[pr.id];
+        if (next) pr.state = next;
+      }
+    },
     prProgress: async () => ({ viewed: 0, total: 0 }),
     commits: async () => [],
     getWorkspace: () => undefined,

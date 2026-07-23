@@ -140,15 +140,21 @@ guidance instead of a cryptic error midway.
 - **Per-row metadata.** Every row shows the **author's avatar**, the PR **title**, `owner/repo`
   `#number`, and a secondary line of at-a-glance stats:
   - **Recently reviewed** rows (all data is already in hand from loading the PR, so it's free):
-    the **branch** (`base ← head`), **commit count**, **diff size** (`+adds −dels · N files`),
-    **"updated X ago"**, and **review progress** as **viewed / total hunks across the whole PR**
-    (baseline → head). Progress is computed on demand and shows a brief **skeleton** while the
-    whole-PR diff is prepared, then updates live as hunks are marked viewed.
+    a **status badge** (**Open** / **Merged** / **Closed**), the **branch** (`base ← head`),
+    **commit count**, **diff size** (`+adds −dels · N files`), **"updated X ago"**, and **review
+    progress** as **viewed / total hunks across the whole PR** (baseline → head). Progress is
+    computed on demand and shows a brief **skeleton** while the whole-PR diff is prepared, then
+    updates live as hunks are marked viewed.
   - **From GitHub** rows: the **author**, **"updated X ago"** and **"opened X ago"**, and the
     **diff size**, which is **enriched asynchronously** (one batched GitHub call for the whole
-    list) — a **skeleton** shows in its place until it arrives.
+    list) — a **skeleton** shows in its place until it arrives. These rows carry **no status
+    badge**: the GitHub list is open-only, so every one of them is open.
 - **Recently reviewed is ordered most-recently-opened first.** Opening or switching to a PR stamps
   it as most-recent, so the list reflects where you were last working.
+- **Status is re-checked whenever the picker opens.** Each time the picker is shown (home screen or
+  the Switch-PR overlay), mergie re-queries the live open/merged/closed state of every loaded PR in
+  one batched GitHub call and updates the badges, so a PR that has since merged or closed is caught
+  without a manual refresh. The refreshed state is remembered, so the review header reflects it too.
 - The GitHub list is built from three `gh search prs` queries (author / assignee / review-requested,
   open only), merged and deduped by PR URL, newest-updated first. It is **fetched once and cached
   for the session**; a **Refresh** button re-queries GitHub on demand. If GitHub can't be reached,
@@ -200,6 +206,9 @@ guidance instead of a cryptic error midway.
 
 - **PR identity in the header:** alongside the PR title, the review header carries a single
   PR-level link:
+  - A **status badge** (**Open** / **Merged** / **Closed**) sits next to the `owner/repo #number`
+    heading, so the PR's live state is visible while reviewing. It reflects the state captured when
+    the PR was loaded, refreshed by **Refresh PR** and by the picker's status re-check (see §4).
   - **"Open on GitHub ↗"** — a link to the PR's GitHub page (its conversation/overview,
     `https://github.com/{owner}/{repo}/pull/{number}`) that opens in a **new browser tab**.
   - Beside it, a **copy-icon button** copies that same PR URL to the clipboard (icon-only, with a

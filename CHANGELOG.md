@@ -6,6 +6,12 @@ This project adheres to [Semantic Versioning](https://semver.org).
 ## [Unreleased]
 
 ### Added
+- **PR status badge (open / merged / closed).** Recently-reviewed rows in the PR picker (home
+  screen and the Switch-PR overlay) and the review-page header now show the pull request's live
+  state as a coloured badge. Opening the picker re-checks the status of every loaded PR in one
+  batched GitHub call, so a PR that has since merged or closed is caught without a manual refresh;
+  the refreshed state is remembered and also shown in the review header. From-GitHub rows carry no
+  badge (that list is open-only).
 - **Richer PR picker rows** (home screen and the Switch-PR overlay). Each pull request now shows
   the author's avatar and a line of at-a-glance stats. **Recently-reviewed** PRs show the branch
   (`base ← head`), commit count, diff size (`+adds −dels · N files`), "updated X ago", and your

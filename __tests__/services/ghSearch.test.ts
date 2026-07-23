@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { CommandResult, CommandRunner, RunOptions } from "@/services/exec.ts";
 import {
   createGhSearchService, mergePrGroups, toMyPrs, buildSizesQuery, parseSizes, sizeKey,
+  buildStatesQuery, parseStates,
   type MyPrSummary, type PrSizeRef,
 } from "@/services/ghSearch.ts";
 
@@ -134,6 +135,52 @@ describe("buildSizesQuery / parseSizes", () => {
 
   test("sizeKey is owner/repo/number", () => {
     expect(sizeKey(REFS[0]!)).toBe("acme/api/1");
+  });
+});
+
+describe("buildStatesQuery / parseStates", () => {
+  test("builds one aliased state lookup per ref", () => {
+    const q = buildStatesQuery(REFS);
+    expect(q).toContain('p0: repository(owner: "acme", name: "api")');
+    expect(q).toContain("pullRequest(number: 1) { state }");
+    expect(q).toContain('p1: repository(owner: "acme", name: "web")');
+    expect(q).toContain("pullRequest(number: 9) { state }");
+  });
+
+  test("maps each alias back to its ref key, normalizing the state", () => {
+    const raw = JSON.stringify({
+      data: { p0: { pullRequest: { state: "MERGED" } }, p1: { pullRequest: { state: "OPEN" } } },
+    });
+    expect(parseStates(raw, REFS)).toEqual({ "acme/api/1": "merged", "acme/web/9": "open" });
+  });
+
+  test("omits refs whose lookup came back null (e.g. no access)", () => {
+    const raw = JSON.stringify({ data: { p0: { pullRequest: { state: "CLOSED" } }, p1: null } });
+    expect(parseStates(raw, REFS)).toEqual({ "acme/api/1": "closed" });
+  });
+});
+
+describe("createGhSearchService.prStates", () => {
+  test("runs a graphql query and returns states keyed by ref", async () => {
+    const calls: string[][] = [];
+    const runner: CommandRunner = {
+      async run(_cmd, args): Promise<CommandResult> {
+        calls.push(args);
+        return { stdout: JSON.stringify({ data: { p0: { pullRequest: { state: "MERGED" } } } }), stderr: "", exitCode: 0 };
+      },
+    };
+    const states = await createGhSearchService(runner).prStates([REFS[0]!]);
+    expect(calls[0]?.slice(0, 2)).toEqual(["api", "graphql"]);
+    expect(states).toEqual({ "acme/api/1": "merged" });
+  });
+
+  test("returns an empty map for no refs without calling gh", async () => {
+    let called = false;
+    const runner: CommandRunner = {
+      async run(): Promise<CommandResult> { called = true; return { stdout: "", stderr: "", exitCode: 0 }; },
+    };
+    expect(await createGhSearchService(runner).prStates([])).toEqual({});
+    expect(called).toBe(false);
   });
 });
 

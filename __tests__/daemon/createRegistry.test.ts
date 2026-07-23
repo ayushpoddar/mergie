@@ -20,6 +20,7 @@ const META: PrMeta = {
   createdAtIso: "2026-07-09T08:00:00Z",
   updatedAtIso: "2026-07-12T12:00:00Z",
   authorLogin: "ayushpoddar",
+  state: "open",
   commits: [
     { sha: "aaa111", subject: "add endpoint", authorName: "Ayush", isoDate: "2026-07-10T09:54:29Z" },
     { sha: "bbb222", subject: "fix test", authorName: "Ayush", isoDate: "2026-07-11T10:00:00Z" },
@@ -103,7 +104,22 @@ describe("createPrRegistry", () => {
       createdAtIso: "2026-07-09T08:00:00Z",
       updatedAtIso: "2026-07-12T12:00:00Z",
       authorLogin: "ayushpoddar",
+      state: "open",
     });
+  });
+
+  test("applyStates updates loaded PR states in place", async () => {
+    const reg = makeRegistry(gh);
+    const pr = await reg.loadPr(URL);
+    expect(reg.getPr(pr.id)?.state).toBe("open");
+    reg.applyStates({ [pr.id]: "merged" });
+    expect(reg.getPr(pr.id)?.state).toBe("merged");
+  });
+
+  test("applyStates ignores unknown ids", async () => {
+    const reg = makeRegistry(gh);
+    await reg.loadPr(URL);
+    expect(() => reg.applyStates({ nope: "closed" })).not.toThrow();
   });
 });
 
@@ -240,10 +256,11 @@ describe("workspace refresh", () => {
     const gh: GhPrService = {
       async fetchPr() {
         calls += 1;
-        if (calls === 1) return { ...META, title: "old title" };
+        if (calls === 1) return { ...META, title: "old title", state: "open" };
         return {
           ...META,
           title: "new title",
+          state: "merged",
           commits: [...META.commits, { sha: "ccc333", subject: "pushed later", authorName: "Ayush", isoDate: "2026-07-12T00:00:00Z" }],
         };
       },
@@ -257,10 +274,12 @@ describe("workspace refresh", () => {
     const ws = reg.getWorkspace(pr.id)!;
     expect(ws.commits().map((c) => c.sha)).toEqual(["aaa111", "bbb222"]);
     expect(ws.pr.title).toBe("old title");
+    expect(ws.pr.state).toBe("open");
 
     await ws.refresh();
     expect(ws.commits().map((c) => c.sha)).toEqual(["aaa111", "bbb222", "ccc333"]);
     expect(ws.pr.title).toBe("new title");
+    expect(ws.pr.state).toBe("merged");
   });
 });
 

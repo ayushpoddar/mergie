@@ -1,5 +1,21 @@
 import { bunRunner, type CommandRunner } from "./exec.ts";
 
+/**
+ * A pull request's lifecycle state on GitHub.
+ * - `open` — still open (draft is tracked separately).
+ * - `closed` — closed without merging.
+ * - `merged` — merged into its base branch.
+ */
+export type PrState = "open" | "closed" | "merged";
+
+/** Normalize GitHub's uppercase state enum to a {@link PrState}; unknown/missing → `open`. */
+export function toPrState(raw: unknown): PrState {
+  const v: string = typeof raw === "string" ? raw.toUpperCase() : "";
+  if (v === "MERGED") return "merged";
+  if (v === "CLOSED") return "closed";
+  return "open";
+}
+
 /** Minimal commit metadata for a PR, from GitHub. */
 export interface PrCommitMeta {
   /** Full commit SHA. */
@@ -37,6 +53,8 @@ export interface PrMeta {
   updatedAtIso: string;
   /** GitHub login of the PR author. */
   authorLogin: string;
+  /** Lifecycle state: open, closed (unmerged), or merged. */
+  state: PrState;
   /** PR commits, oldest → newest (as GitHub returns them). */
   commits: PrCommitMeta[];
 }
@@ -59,7 +77,7 @@ export function createGhPrService(runner: CommandRunner = bunRunner): GhPrServic
     async fetchPr(ref: PrLookup): Promise<PrMeta> {
       const args: string[] = [
         "pr", "view", String(ref.number), "--repo", `${ref.owner}/${ref.repo}`,
-        "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author",
+        "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author,state",
       ];
       const res = await runner.run("gh", args);
       if (res.exitCode !== 0) {
@@ -109,6 +127,7 @@ function toPrMeta(raw: unknown): PrMeta {
     createdAtIso: str(rec.createdAt),
     updatedAtIso: str(rec.updatedAt),
     authorLogin: str(author.login),
+    state: toPrState(rec.state),
     commits: rawCommits.map(toCommitMeta),
   };
 }

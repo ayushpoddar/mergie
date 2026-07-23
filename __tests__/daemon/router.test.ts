@@ -6,16 +6,16 @@ import { defaultConfig } from "@/domain/config.ts";
 import type { Context } from "@/daemon/trpc.ts";
 import type { LoadedPr, PrRegistry } from "@/daemon/registry.ts";
 import type { CommitInfo, GitService } from "@/services/git.ts";
-import type { GhPrService, PrMeta } from "@/services/ghPr.ts";
+import type { GhPrService, PrMeta, PrState } from "@/services/ghPr.ts";
 import type { GhSearchService } from "@/services/ghSearch.ts";
 
 /** A search service that returns no PRs (the router tests don't exercise it). */
-const emptySearch: GhSearchService = { listMyPrs: async () => [], prSizes: async () => ({}) };
+const emptySearch: GhSearchService = { listMyPrs: async () => [], prSizes: async () => ({}), prStates: async () => ({}) };
 
 /** The metadata-derived LoadedPr fields the router tests don't care about. */
 const PR_EXTRA = {
   commitCount: 0, additions: 0, deletions: 0, changedFiles: 0,
-  createdAtIso: "", updatedAtIso: "", authorLogin: "", lastOpenedAtMs: 0,
+  createdAtIso: "", updatedAtIso: "", authorLogin: "", state: "open", lastOpenedAtMs: 0,
 } as const;
 
 const COMMIT: CommitInfo = {
@@ -43,6 +43,12 @@ function fakeRegistry(): PrRegistry & { loaded: LoadedPr[] } {
     listPrs: () => loaded,
     getPr: (id) => loaded.find((p) => p.id === id),
     touchPr: () => {},
+    applyStates: (states) => {
+      for (const pr of loaded) {
+        const next = states[pr.id];
+        if (next) pr.state = next;
+      }
+    },
     prProgress: async () => ({ viewed: 0, total: 0 }),
     commits: async () => [COMMIT],
     getWorkspace: () => undefined,
@@ -87,6 +93,27 @@ describe("appRouter", () => {
     expect(await caller.stop()).toEqual({ stopping: true });
     expect(stopped).toBe(true);
   });
+
+  test("prStates re-checks loaded PRs, folds results back, and returns them keyed by id", async () => {
+    const registry = fakeRegistry();
+    const search: GhSearchService = {
+      ...emptySearch,
+      prStates: async (refs) => {
+        const out: Record<string, PrState> = {};
+        for (const r of refs) out[`${r.owner}/${r.repo}/${r.number}`] = "merged";
+        return out;
+      },
+    };
+    const caller = appRouter.createCaller({ registry, search, requestStop: () => {} });
+    await caller.loadPr({ url: "https://github.com/o/r/pull/1" });
+    expect(await caller.prStates()).toEqual({ "pr-1": "merged" });
+    expect(registry.getPr("pr-1")?.state).toBe("merged");
+  });
+
+  test("prStates returns an empty map when no PRs are loaded", async () => {
+    const caller = appRouter.createCaller(ctx);
+    expect(await caller.prStates()).toEqual({});
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -107,6 +134,7 @@ const WS_DIFF = `diff --git a/src/a.ts b/src/a.ts
 const WS_META: PrMeta = {
   title: "T", body: "", baseRef: "main", headRef: "feature", headSha: "bbb222",
   additions: 0, deletions: 0, changedFiles: 0, createdAtIso: "", updatedAtIso: "", authorLogin: "",
+  state: "open",
   commits: [
     { sha: "aaa111", subject: "one", authorName: "A", isoDate: "2026-07-10T00:00:00Z" },
     { sha: "bbb222", subject: "two", authorName: "A", isoDate: "2026-07-11T00:00:00Z" },

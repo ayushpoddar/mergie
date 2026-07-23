@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandResult, CommandRunner, RunOptions } from "@/services/exec.ts";
-import { createGhPrService, normalizeBody } from "@/services/ghPr.ts";
+import { createGhPrService, normalizeBody, type PrState } from "@/services/ghPr.ts";
 
 /** Canned `gh pr view` JSON matching the real shape. */
 const GH_JSON = JSON.stringify({
@@ -15,6 +15,7 @@ const GH_JSON = JSON.stringify({
   createdAt: "2026-07-09T08:00:00Z",
   updatedAt: "2026-07-12T12:00:00Z",
   author: { login: "ayushpoddar" },
+  state: "MERGED",
   commits: [
     {
       oid: "aaa111",
@@ -54,7 +55,7 @@ describe("ghPr.fetchPr", () => {
     expect(calls[0]?.cmd).toBe("gh");
     expect(calls[0]?.args).toEqual([
       "pr", "view", "17360", "--repo", "withastro/astro",
-      "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author",
+      "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author,state",
     ]);
   });
 
@@ -73,11 +74,27 @@ describe("ghPr.fetchPr", () => {
       createdAtIso: "2026-07-09T08:00:00Z",
       updatedAtIso: "2026-07-12T12:00:00Z",
       authorLogin: "ayushpoddar",
+      state: "merged",
       commits: [
         { sha: "aaa111", subject: "add endpoint", authorName: "Ayush Poddar", isoDate: "2026-07-10T09:54:29Z" },
         { sha: "bbb222", subject: "fix test", authorName: "Ayush Poddar", isoDate: "2026-07-11T10:00:00Z" },
       ],
     });
+  });
+
+  const stateCases: Array<[string, string, PrState]> = [
+    ["normalizes OPEN", "OPEN", "open"],
+    ["normalizes CLOSED", "CLOSED", "closed"],
+    ["normalizes MERGED", "MERGED", "merged"],
+    ["defaults an unknown state to open", "SOMETHING_ELSE", "open"],
+    ["defaults a missing state to open", "", "open"],
+  ];
+  test.each(stateCases)("%s", async (_label, raw, expected) => {
+    const json = JSON.parse(GH_JSON);
+    if (raw === "") delete json.state; else json.state = raw;
+    const { runner } = fakeRunner({ stdout: JSON.stringify(json), stderr: "", exitCode: 0 });
+    const meta = await createGhPrService(runner).fetchPr(REF);
+    expect(meta.state).toBe(expected);
   });
 
   test("throws on non-zero exit", async () => {

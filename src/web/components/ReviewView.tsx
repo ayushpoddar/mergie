@@ -20,6 +20,7 @@ import type { NavFrame } from "@/web/lib/navStack.ts";
 import { ChatPanel } from "./ChatPanel.tsx";
 import { AiReviewModal } from "./AiReviewModal.tsx";
 import { AiReviewIndicator } from "./AiReviewIndicator.tsx";
+import { PrStatusBadge } from "./PrStatusBadge.tsx";
 import { RightRail } from "./RightRail.tsx";
 import { SwitchPrModal } from "./SwitchPrModal.tsx";
 import { CopyIconButton } from "./CopyIconButton.tsx";
@@ -114,6 +115,7 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
           <div className="review-title">
             <div className="review-title-row">
               <strong>{pr ? `${pr.owner}/${pr.repo} #${pr.number}` : props.prId}</strong>
+              {pr && <PrStatusBadge state={pr.state} />}
               {pr && (
                 <span className="pr-link-group">
                   <a

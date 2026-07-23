@@ -1,5 +1,6 @@
 import { bunRunner, type CommandRunner } from "./exec.ts";
 import { parsePrUrl } from "@/domain/url.ts";
+import { toPrState, type PrState } from "./ghPr.ts";
 
 /** How the authenticated user is related to a pull request. */
 export type PrRelationship = "authored" | "assigned" | "review-requested";
@@ -57,6 +58,11 @@ export interface GhSearchService {
    * {@link sizeKey}. PRs the viewer can't see are omitted from the result.
    */
   prSizes(refs: readonly PrSizeRef[]): Promise<Record<string, PrSize>>;
+  /**
+   * Fetch the current lifecycle state for many PRs in one batched GraphQL call,
+   * keyed by {@link sizeKey}. PRs the viewer can't see are omitted.
+   */
+  prStates(refs: readonly PrSizeRef[]): Promise<Record<string, PrState>>;
 }
 
 /** The `--<flag>=@me` search filter for each relationship. */
@@ -113,6 +119,33 @@ export function parseSizes(rawJson: string, refs: readonly PrSizeRef[]): Record<
     const pr: unknown = isRecord(node) ? node.pullRequest : null;
     if (!isRecord(pr)) return;
     out[sizeKey(ref)] = { additions: int(pr.additions), deletions: int(pr.deletions), changedFiles: int(pr.changedFiles) };
+  });
+  return out;
+}
+
+/** Build one batched GraphQL query aliasing each ref's state as `p<index>`. */
+export function buildStatesQuery(refs: readonly PrSizeRef[]): string {
+  const parts: string[] = refs.map((r, i) =>
+    `p${i}: repository(owner: ${JSON.stringify(r.owner)}, name: ${JSON.stringify(r.repo)}) ` +
+    `{ pullRequest(number: ${r.number}) { state } }`);
+  return `query {\n${parts.join("\n")}\n}`;
+}
+
+/** Map a batched-states GraphQL response back to a {@link sizeKey}-keyed record. */
+export function parseStates(rawJson: string, refs: readonly PrSizeRef[]): Record<string, PrState> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return {};
+  }
+  const data: Record<string, unknown> = isRecord(parsed) && isRecord(parsed.data) ? parsed.data : {};
+  const out: Record<string, PrState> = {};
+  refs.forEach((ref, i) => {
+    const node: unknown = data[`p${i}`];
+    const pr: unknown = isRecord(node) ? node.pullRequest : null;
+    if (!isRecord(pr)) return;
+    out[sizeKey(ref)] = toPrState(pr.state);
   });
   return out;
 }
@@ -203,6 +236,14 @@ export function createGhSearchService(runner: CommandRunner = bunRunner): GhSear
         throw new Error(`gh api graphql failed (${res.exitCode}): ${res.stderr.trim()}`);
       }
       return parseSizes(res.stdout, refs);
+    },
+    async prStates(refs: readonly PrSizeRef[]): Promise<Record<string, PrState>> {
+      if (refs.length === 0) return {};
+      const res = await runner.run("gh", ["api", "graphql", "-f", `query=${buildStatesQuery(refs)}`]);
+      if (res.exitCode !== 0) {
+        throw new Error(`gh api graphql failed (${res.exitCode}): ${res.stderr.trim()}`);
+      }
+      return parseStates(res.stdout, refs);
     },
   };
 }

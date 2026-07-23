@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "../trpc.ts";
 import { parsePrUrl } from "@/domain/url.ts";
 import { filterPrs } from "@/web/lib/filterPrs.ts";
 import { excludeLoaded } from "@/web/lib/prPickerModel.ts";
 import { relativeTime } from "@/web/lib/relativeTime.ts";
 import { RefreshIcon, SearchIcon, InboxIcon } from "./Icons.tsx";
+import { PrStatusBadge } from "./PrStatusBadge.tsx";
 import type { MyPrSummary, PrRelationship, PrSize } from "@/services/ghSearch.ts";
 import type { LoadedPr } from "@/daemon/registry.ts";
 
@@ -47,8 +48,17 @@ function sizeKey(p: { owner: string; repo: string; number: number }): string {
  */
 export function PrPicker(props: { currentPrId?: string }): React.JSX.Element {
   const [query, setQuery] = useState("");
+  const utils = trpc.useUtils();
   const health = trpc.health.useQuery();
   const mine = trpc.listMyPrs.useQuery(undefined, { staleTime: Infinity, retry: false });
+
+  // Re-check every loaded PR's live status once when the picker opens; the
+  // daemon folds the fresh states back into the registry, so we refresh the
+  // loaded-PR list to reflect any that have since merged or closed.
+  const statuses = trpc.prStates.useQuery(undefined, { refetchOnMount: "always", staleTime: 0, retry: false });
+  useEffect(() => {
+    if (statuses.data) void utils.health.invalidate();
+  }, [statuses.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loaded: LoadedPr[] = health.data?.prs ?? [];
   const loadedShown: LoadedPr[] = filterPrs(query, loaded);
@@ -216,6 +226,7 @@ function LoadedRow(props: { pr: LoadedPr; isCurrent: boolean }): React.JSX.Eleme
         <Avatar login={pr.authorLogin} />
         <span className="pr-card-repo">{pr.owner}/{pr.repo}</span>
         <span className="pr-card-num">#{pr.number}</span>
+        <PrStatusBadge state={pr.state} />
         {isCurrent && <span className="pr-chip pr-chip-current">Reviewing now</span>}
       </span>
       <span className="pr-card-title">{pr.title}</span>

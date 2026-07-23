@@ -1046,6 +1046,15 @@ button.ai-indicator { cursor: pointer; }
 }
 .pr-chip-draft { background: var(--gray-200); color: var(--muted); }
 .pr-chip-current { background: var(--accent-soft, var(--gray-100)); color: var(--accent); border-color: var(--accent-border); }
+
+/* PR lifecycle status badge (open / merged / closed), GitHub-style colours. */
+.pr-status {
+  display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; border: 1px solid transparent; white-space: nowrap;
+}
+.pr-status-open { background: #dafbe1; color: #1a7f37; border-color: #aceebb; }
+.pr-status-merged { background: #f5eefe; color: #8250df; border-color: #e2d0fa; }
+.pr-status-closed { background: #ffebe9; color: #cf222e; border-color: #ffcdca; }
 .pr-card-current { opacity: 0.75; cursor: default; box-shadow: none; }
 .pr-card-current:hover { border-color: var(--border); box-shadow: none; }
 .picker-status { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-4); color: var(--muted); font-size: var(--fs-secondary); }
