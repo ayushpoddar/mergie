@@ -25,6 +25,18 @@ export interface PrMeta {
   headRef: string;
   /** Head commit SHA. */
   headSha: string;
+  /** Lines added across the whole PR (base → head). */
+  additions: number;
+  /** Lines deleted across the whole PR (base → head). */
+  deletions: number;
+  /** Number of files changed across the whole PR. */
+  changedFiles: number;
+  /** ISO-8601 timestamp the PR was opened. */
+  createdAtIso: string;
+  /** ISO-8601 timestamp of the PR's last update. */
+  updatedAtIso: string;
+  /** GitHub login of the PR author. */
+  authorLogin: string;
   /** PR commits, oldest → newest (as GitHub returns them). */
   commits: PrCommitMeta[];
 }
@@ -47,7 +59,7 @@ export function createGhPrService(runner: CommandRunner = bunRunner): GhPrServic
     async fetchPr(ref: PrLookup): Promise<PrMeta> {
       const args: string[] = [
         "pr", "view", String(ref.number), "--repo", `${ref.owner}/${ref.repo}`,
-        "--json", "title,body,baseRefName,headRefName,headRefOid,commits",
+        "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author",
       ];
       const res = await runner.run("gh", args);
       if (res.exitCode !== 0) {
@@ -66,6 +78,11 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
+/** Coerce a value to a finite integer, defaulting to 0. */
+function int(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : 0;
+}
+
 /**
  * Normalize a raw PR body: coerce non-strings to "", convert CRLF → LF, and
  * trim. A whitespace-only body collapses to "" so callers can treat empty as
@@ -79,12 +96,19 @@ export function normalizeBody(raw: unknown): string {
 function toPrMeta(raw: unknown): PrMeta {
   const rec: Record<string, unknown> = isRecord(raw) ? raw : {};
   const rawCommits: unknown[] = Array.isArray(rec.commits) ? rec.commits : [];
+  const author: Record<string, unknown> = isRecord(rec.author) ? rec.author : {};
   return {
     title: str(rec.title),
     body: normalizeBody(rec.body),
     baseRef: str(rec.baseRefName),
     headRef: str(rec.headRefName),
     headSha: str(rec.headRefOid),
+    additions: int(rec.additions),
+    deletions: int(rec.deletions),
+    changedFiles: int(rec.changedFiles),
+    createdAtIso: str(rec.createdAt),
+    updatedAtIso: str(rec.updatedAt),
+    authorLogin: str(author.login),
     commits: rawCommits.map(toCommitMeta),
   };
 }

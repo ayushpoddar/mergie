@@ -14,6 +14,12 @@ const META: PrMeta = {
   baseRef: "staging",
   headRef: "feat/report-export-api",
   headSha: "c4cd0f6",
+  additions: 120,
+  deletions: 8,
+  changedFiles: 5,
+  createdAtIso: "2026-07-09T08:00:00Z",
+  updatedAtIso: "2026-07-12T12:00:00Z",
+  authorLogin: "ayushpoddar",
   commits: [
     { sha: "aaa111", subject: "add endpoint", authorName: "Ayush", isoDate: "2026-07-10T09:54:29Z" },
     { sha: "bbb222", subject: "fix test", authorName: "Ayush", isoDate: "2026-07-11T10:00:00Z" },
@@ -85,6 +91,79 @@ describe("createPrRegistry", () => {
 
   test("commits throws for an unknown PR id", async () => {
     await expect(makeRegistry(gh).commits("nope")).rejects.toThrow();
+  });
+
+  test("LoadedPr carries commit count, diff size, timestamps, and author", async () => {
+    const pr = await makeRegistry(gh).loadPr(URL);
+    expect(pr).toMatchObject({
+      commitCount: 2,
+      additions: 120,
+      deletions: 8,
+      changedFiles: 5,
+      createdAtIso: "2026-07-09T08:00:00Z",
+      updatedAtIso: "2026-07-12T12:00:00Z",
+      authorLogin: "ayushpoddar",
+    });
+  });
+});
+
+const URL_A = "https://github.com/acme/api/pull/1";
+const URL_B = "https://github.com/acme/api/pull/2";
+
+/** A registry with a mutable clock so load/touch ordering is observable. */
+function makeClockRegistry(clock: { t: number }) {
+  return createPrRegistry({
+    ghPr: fakeGhPr(),
+    openDb: () => openDatabase(":memory:"),
+    makeGit: fakeGit,
+    config: defaultConfig(),
+    ensureDir: () => {},
+    now: () => clock.t,
+    pathEnv: { env: { XDG_DATA_HOME: "/tmp/mergie-test-data" }, home: "/tmp" },
+  });
+}
+
+describe("recently-opened ordering", () => {
+  test("listPrs is sorted most-recently-opened first", async () => {
+    const clock = { t: 100 };
+    const reg = makeClockRegistry(clock);
+    await reg.loadPr(URL_A); // opened at 100
+    clock.t = 200;
+    await reg.loadPr(URL_B); // opened at 200
+    expect(reg.listPrs().map((p) => p.number)).toEqual([2, 1]);
+  });
+
+  test("touchPr moves a PR to the front", async () => {
+    const clock = { t: 100 };
+    const reg = makeClockRegistry(clock);
+    const a = await reg.loadPr(URL_A);
+    clock.t = 200;
+    await reg.loadPr(URL_B);
+    clock.t = 300;
+    reg.touchPr(a.id); // re-opening A
+    expect(reg.listPrs().map((p) => p.number)).toEqual([1, 2]);
+    expect(reg.getPr(a.id)?.lastOpenedAtMs).toBe(300);
+  });
+
+  test("touchPr on an unknown id is a no-op", () => {
+    const reg = makeClockRegistry({ t: 1 });
+    expect(() => reg.touchPr("nope")).not.toThrow();
+  });
+});
+
+describe("whole-PR review progress", () => {
+  test("reports total hunks and how many are viewed", async () => {
+    const reg = makeReviewRegistry();
+    const pr = await reg.loadPr(URL);
+    const ws = reg.getWorkspace(pr.id)!;
+    expect(await reg.prProgress(pr.id)).toEqual({ viewed: 0, total: 1 });
+    const files = await ws.rangeView("base0", "c4cd0f6");
+    ws.setHunkViewed(files[0]!.hunks[0]!.hash, true);
+    expect(await reg.prProgress(pr.id)).toEqual({ viewed: 1, total: 1 });
+  });
+
+  test("prProgress throws for an unknown PR id", async () => {
+    await expect(makeReviewRegistry().prProgress("nope")).rejects.toThrow();
   });
 });
 

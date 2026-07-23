@@ -1,11 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandResult, CommandRunner, RunOptions } from "@/services/exec.ts";
 import {
-  createGhSearchService, mergePrGroups, toMyPrs, type MyPrSummary,
+  createGhSearchService, mergePrGroups, toMyPrs, buildSizesQuery, parseSizes, sizeKey,
+  type MyPrSummary, type PrSizeRef,
 } from "@/services/ghSearch.ts";
 
 /** Build a `gh search prs` JSON item. */
-function item(url: string, opts: Partial<{ title: string; login: string; isDraft: boolean; updatedAt: string }> = {}): unknown {
+function item(url: string, opts: Partial<{ title: string; login: string; isDraft: boolean; updatedAt: string; createdAt: string }> = {}): unknown {
   return {
     number: Number(url.split("/").pop()),
     title: opts.title ?? "some title",
@@ -13,6 +14,7 @@ function item(url: string, opts: Partial<{ title: string; login: string; isDraft
     author: { login: opts.login ?? "ayush" },
     isDraft: opts.isDraft ?? false,
     updatedAt: opts.updatedAt ?? "2026-07-10T00:00:00Z",
+    createdAt: opts.createdAt ?? "2026-07-01T00:00:00Z",
   };
 }
 
@@ -40,11 +42,11 @@ function relationRunner(byFlag: Record<string, unknown[]>): { runner: CommandRun
 
 describe("toMyPrs", () => {
   test("maps a gh item, deriving owner/repo/number from the url", () => {
-    const [pr] = toMyPrs(JSON.stringify([item(AUTHORED, { title: "fix bug", login: "octo", updatedAt: "2026-07-12T00:00:00Z" })]), "authored");
+    const [pr] = toMyPrs(JSON.stringify([item(AUTHORED, { title: "fix bug", login: "octo", updatedAt: "2026-07-12T00:00:00Z", createdAt: "2026-07-02T00:00:00Z" })]), "authored");
     expect(pr).toEqual({
       owner: "acme", repo: "api", number: 1, title: "fix bug",
       url: AUTHORED, author: "octo", isDraft: false,
-      updatedAtIso: "2026-07-12T00:00:00Z", relationships: ["authored"],
+      updatedAtIso: "2026-07-12T00:00:00Z", createdAtIso: "2026-07-02T00:00:00Z", relationships: ["authored"],
     });
   });
 
@@ -92,5 +94,69 @@ describe("createGhSearchService.listMyPrs", () => {
       },
     };
     await expect(createGhSearchService(runner).listMyPrs()).rejects.toThrow();
+  });
+});
+
+const REFS: PrSizeRef[] = [
+  { owner: "acme", repo: "api", number: 1 },
+  { owner: "acme", repo: "web", number: 9 },
+];
+
+describe("buildSizesQuery / parseSizes", () => {
+  test("builds one aliased repository lookup per ref", () => {
+    const q = buildSizesQuery(REFS);
+    expect(q).toContain('p0: repository(owner: "acme", name: "api")');
+    expect(q).toContain("pullRequest(number: 1)");
+    expect(q).toContain('p1: repository(owner: "acme", name: "web")');
+    expect(q).toContain("pullRequest(number: 9)");
+    expect(q).toContain("additions");
+    expect(q).toContain("deletions");
+    expect(q).toContain("changedFiles");
+  });
+
+  test("maps each alias back to its ref key", () => {
+    const raw = JSON.stringify({
+      data: {
+        p0: { pullRequest: { additions: 120, deletions: 8, changedFiles: 5 } },
+        p1: { pullRequest: { additions: 3, deletions: 3, changedFiles: 1 } },
+      },
+    });
+    expect(parseSizes(raw, REFS)).toEqual({
+      "acme/api/1": { additions: 120, deletions: 8, changedFiles: 5 },
+      "acme/web/9": { additions: 3, deletions: 3, changedFiles: 1 },
+    });
+  });
+
+  test("omits refs whose lookup came back null (e.g. no access)", () => {
+    const raw = JSON.stringify({ data: { p0: { pullRequest: { additions: 1, deletions: 0, changedFiles: 1 } }, p1: null } });
+    expect(parseSizes(raw, REFS)).toEqual({ "acme/api/1": { additions: 1, deletions: 0, changedFiles: 1 } });
+  });
+
+  test("sizeKey is owner/repo/number", () => {
+    expect(sizeKey(REFS[0]!)).toBe("acme/api/1");
+  });
+});
+
+describe("createGhSearchService.prSizes", () => {
+  test("runs a graphql query and returns sizes keyed by ref", async () => {
+    const calls: string[][] = [];
+    const runner: CommandRunner = {
+      async run(_cmd, args): Promise<CommandResult> {
+        calls.push(args);
+        return { stdout: JSON.stringify({ data: { p0: { pullRequest: { additions: 10, deletions: 2, changedFiles: 3 } } } }), stderr: "", exitCode: 0 };
+      },
+    };
+    const sizes = await createGhSearchService(runner).prSizes([REFS[0]!]);
+    expect(calls[0]?.slice(0, 2)).toEqual(["api", "graphql"]);
+    expect(sizes).toEqual({ "acme/api/1": { additions: 10, deletions: 2, changedFiles: 3 } });
+  });
+
+  test("returns an empty map for no refs without calling gh", async () => {
+    let called = false;
+    const runner: CommandRunner = {
+      async run(): Promise<CommandResult> { called = true; return { stdout: "", stderr: "", exitCode: 0 }; },
+    };
+    expect(await createGhSearchService(runner).prSizes([])).toEqual({});
+    expect(called).toBe(false);
   });
 });

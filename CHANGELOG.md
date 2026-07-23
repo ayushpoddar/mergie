@@ -3,6 +3,17 @@
 All notable changes to this project are documented here.
 This project adheres to [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+- **Richer PR picker rows** (home screen and the Switch-PR overlay). Each pull request now shows
+  the author's avatar and a line of at-a-glance stats. **Recently-reviewed** PRs show the branch
+  (`base ← head`), commit count, diff size (`+adds −dels · N files`), "updated X ago", and your
+  **review progress** (viewed / total hunks across the whole PR). **From-GitHub** PRs show the
+  author, "updated / opened X ago", and diff size (fetched asynchronously with a loading skeleton).
+- **Recently-reviewed PRs are ordered most-recently-opened first**, so the list tracks where you
+  were last working.
+
 ## [0.4.0] - 2026-07-23
 
 ### Added

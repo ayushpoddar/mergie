@@ -30,6 +30,24 @@ export const appRouter = router({
   /** Open PRs authored by / assigned to / review-requested from the viewer. */
   listMyPrs: publicProcedure.query(({ ctx }) => ctx.search.listMyPrs()),
 
+  /** Diff-sizes for many GitHub-listed PRs, batched (keyed `owner/repo/number`). */
+  prSizes: publicProcedure
+    .input(z.object({ refs: z.array(z.object({ owner: z.string(), repo: z.string(), number: z.number() })) }))
+    .query(({ ctx, input }) => ctx.search.prSizes(input.refs)),
+
+  /** Stamp a loaded PR as opened now (updates the recently-reviewed ordering). */
+  touchPr: publicProcedure
+    .input(prInput)
+    .mutation(({ ctx, input }) => {
+      ctx.registry.touchPr(input.id);
+      return { ok: true };
+    }),
+
+  /** Whole-PR review progress (viewed vs. total hunks) for a loaded PR. */
+  prProgress: publicProcedure
+    .input(prInput)
+    .query(({ ctx, input }) => ctx.registry.prProgress(input.id)),
+
   /** Load (or attach to) a PR by URL. */
   loadPr: publicProcedure
     .input(z.object({ url: z.string().min(1) }))

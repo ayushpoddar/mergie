@@ -137,10 +137,23 @@ guidance instead of a cryptic error midway.
      have a **review requested** from them. Each GitHub row is tagged with the relationship(s) and
      a **Draft** badge where applicable, and shows the author. A PR already under "Recently
      reviewed" is not repeated in the GitHub list.
+- **Per-row metadata.** Every row shows the **author's avatar**, the PR **title**, `owner/repo`
+  `#number`, and a secondary line of at-a-glance stats:
+  - **Recently reviewed** rows (all data is already in hand from loading the PR, so it's free):
+    the **branch** (`base ← head`), **commit count**, **diff size** (`+adds −dels · N files`),
+    **"updated X ago"**, and **review progress** as **viewed / total hunks across the whole PR**
+    (baseline → head). Progress is computed on demand and shows a brief **skeleton** while the
+    whole-PR diff is prepared, then updates live as hunks are marked viewed.
+  - **From GitHub** rows: the **author**, **"updated X ago"** and **"opened X ago"**, and the
+    **diff size**, which is **enriched asynchronously** (one batched GitHub call for the whole
+    list) — a **skeleton** shows in its place until it arrives.
+- **Recently reviewed is ordered most-recently-opened first.** Opening or switching to a PR stamps
+  it as most-recent, so the list reflects where you were last working.
 - The GitHub list is built from three `gh search prs` queries (author / assignee / review-requested,
   open only), merged and deduped by PR URL, newest-updated first. It is **fetched once and cached
   for the session**; a **Refresh** button re-queries GitHub on demand. If GitHub can't be reached,
-  the section shows the error (the rest of the picker still works).
+  the section shows the error (the rest of the picker still works). Diff sizes for these rows come
+  from a separate batched GraphQL call; PRs the viewer can't see are simply left without a size.
 - **Picking a PR navigates instantly to a loading view** that covers both fetching the PR metadata
   from GitHub and preparing the diff; on success it lands in the review screen. A failure to load
   is shown there with a way back to the picker. Picking an already-loaded PR skips straight to

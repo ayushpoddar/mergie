@@ -9,6 +9,12 @@ const GH_JSON = JSON.stringify({
   baseRefName: "staging",
   headRefName: "feat/report-export-api",
   headRefOid: "c4cd0f6",
+  additions: 120,
+  deletions: 8,
+  changedFiles: 5,
+  createdAt: "2026-07-09T08:00:00Z",
+  updatedAt: "2026-07-12T12:00:00Z",
+  author: { login: "ayushpoddar" },
   commits: [
     {
       oid: "aaa111",
@@ -48,7 +54,7 @@ describe("ghPr.fetchPr", () => {
     expect(calls[0]?.cmd).toBe("gh");
     expect(calls[0]?.args).toEqual([
       "pr", "view", "17360", "--repo", "withastro/astro",
-      "--json", "title,body,baseRefName,headRefName,headRefOid,commits",
+      "--json", "title,body,baseRefName,headRefName,headRefOid,commits,additions,deletions,changedFiles,createdAt,updatedAt,author",
     ]);
   });
 
@@ -61,6 +67,12 @@ describe("ghPr.fetchPr", () => {
       baseRef: "staging",
       headRef: "feat/report-export-api",
       headSha: "c4cd0f6",
+      additions: 120,
+      deletions: 8,
+      changedFiles: 5,
+      createdAtIso: "2026-07-09T08:00:00Z",
+      updatedAtIso: "2026-07-12T12:00:00Z",
+      authorLogin: "ayushpoddar",
       commits: [
         { sha: "aaa111", subject: "add endpoint", authorName: "Ayush Poddar", isoDate: "2026-07-10T09:54:29Z" },
         { sha: "bbb222", subject: "fix test", authorName: "Ayush Poddar", isoDate: "2026-07-11T10:00:00Z" },

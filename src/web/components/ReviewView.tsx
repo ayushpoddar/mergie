@@ -82,6 +82,11 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
   const toggleKey: string = JSON.stringify(toggles);
   useEffect(() => { setRevealedHunks(new Set()); }, [rangeKey, toggleKey]);
 
+  // Stamp this PR as opened so the picker's "Recently reviewed" list orders by
+  // most-recently-viewed. Fires once per PR (not on every range/toggle change).
+  const touchPr = trpc.touchPr.useMutation();
+  useEffect(() => { touchPr.mutate({ id: props.prId }); }, [props.prId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const pickSymbol = (op: MenuOp, side: SearchSide): void => {
     if (diffMenu.menu) {
       setRailTab("search");

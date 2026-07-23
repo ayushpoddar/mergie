@@ -22,14 +22,41 @@ export interface MyPrSummary {
   isDraft: boolean;
   /** ISO-8601 last-updated timestamp (used to sort newest-first). */
   updatedAtIso: string;
+  /** ISO-8601 timestamp the PR was opened. */
+  createdAtIso: string;
   /** All relationships the viewer has to this PR, in canonical order. */
   relationships: PrRelationship[];
+}
+
+/** Identifies a PR for a size lookup. */
+export interface PrSizeRef {
+  /** Repository owner. */
+  owner: string;
+  /** Repository name. */
+  repo: string;
+  /** PR number. */
+  number: number;
+}
+
+/** The diff-size of a PR (whole PR, base → head). */
+export interface PrSize {
+  /** Lines added. */
+  additions: number;
+  /** Lines deleted. */
+  deletions: number;
+  /** Files changed. */
+  changedFiles: number;
 }
 
 /** Service for listing the viewer's open PRs via the `gh` CLI. */
 export interface GhSearchService {
   /** Open PRs authored by, assigned to, or review-requested from the viewer. */
   listMyPrs(): Promise<MyPrSummary[]>;
+  /**
+   * Fetch diff-sizes for many PRs in one batched GraphQL call, keyed by
+   * {@link sizeKey}. PRs the viewer can't see are omitted from the result.
+   */
+  prSizes(refs: readonly PrSizeRef[]): Promise<Record<string, PrSize>>;
 }
 
 /** The `--<flag>=@me` search filter for each relationship. */
@@ -43,7 +70,7 @@ const RELATION_FLAG: Record<PrRelationship, string> = {
 const RELATION_ORDER: readonly PrRelationship[] = ["authored", "assigned", "review-requested"];
 
 /** JSON fields requested from `gh search prs`. */
-const JSON_FIELDS = "number,title,url,author,isDraft,updatedAt";
+const JSON_FIELDS = "number,title,url,author,isDraft,updatedAt,createdAt";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -51,6 +78,43 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : "";
+}
+
+/** Coerce a value to a finite integer, defaulting to 0. */
+function int(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : 0;
+}
+
+/** Stable map key for a PR size lookup: `owner/repo/number`. */
+export function sizeKey(ref: PrSizeRef): string {
+  return `${ref.owner}/${ref.repo}/${ref.number}`;
+}
+
+/** Build one batched GraphQL query aliasing each ref as `p<index>`. */
+export function buildSizesQuery(refs: readonly PrSizeRef[]): string {
+  const parts: string[] = refs.map((r, i) =>
+    `p${i}: repository(owner: ${JSON.stringify(r.owner)}, name: ${JSON.stringify(r.repo)}) ` +
+    `{ pullRequest(number: ${r.number}) { additions deletions changedFiles } }`);
+  return `query {\n${parts.join("\n")}\n}`;
+}
+
+/** Map a batched-sizes GraphQL response back to a {@link sizeKey}-keyed record. */
+export function parseSizes(rawJson: string, refs: readonly PrSizeRef[]): Record<string, PrSize> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return {};
+  }
+  const data: Record<string, unknown> = isRecord(parsed) && isRecord(parsed.data) ? parsed.data : {};
+  const out: Record<string, PrSize> = {};
+  refs.forEach((ref, i) => {
+    const node: unknown = data[`p${i}`];
+    const pr: unknown = isRecord(node) ? node.pullRequest : null;
+    if (!isRecord(pr)) return;
+    out[sizeKey(ref)] = { additions: int(pr.additions), deletions: int(pr.deletions), changedFiles: int(pr.changedFiles) };
+  });
+  return out;
 }
 
 /**
@@ -77,6 +141,7 @@ export function toMyPrs(rawJson: string, relationship: PrRelationship): MyPrSumm
       author: str(author.login),
       isDraft: raw.isDraft === true,
       updatedAtIso: str(raw.updatedAt),
+      createdAtIso: str(raw.createdAt),
       relationships: [relationship],
     });
   }
@@ -130,6 +195,14 @@ export function createGhSearchService(runner: CommandRunner = bunRunner): GhSear
     async listMyPrs(): Promise<MyPrSummary[]> {
       const groups = await Promise.all(RELATION_ORDER.map(search));
       return mergePrGroups(groups);
+    },
+    async prSizes(refs: readonly PrSizeRef[]): Promise<Record<string, PrSize>> {
+      if (refs.length === 0) return {};
+      const res = await runner.run("gh", ["api", "graphql", "-f", `query=${buildSizesQuery(refs)}`]);
+      if (res.exitCode !== 0) {
+        throw new Error(`gh api graphql failed (${res.exitCode}): ${res.stderr.trim()}`);
+      }
+      return parseSizes(res.stdout, refs);
     },
   };
 }

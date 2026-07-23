@@ -35,7 +35,7 @@ import { hunkChangedSpan, locateLineComment, toPostInput } from "./postMapping.t
 import { buildRangeView, type FileView } from "./reviewService.ts";
 import { buildSplitRows, type SplitRow } from "./splitView.ts";
 import type {
-  AiReviewOptions, ChatRange, CommitsWithBaseline, LiveChatEvent, LoadedPr, NewComment, PostPreview, PostTarget, PrRegistry, Workspace,
+  AiReviewOptions, ChatRange, CommitsWithBaseline, LiveChatEvent, LoadedPr, NewComment, PostPreview, PostTarget, PrProgress, PrRegistry, Workspace,
 } from "./registry.ts";
 
 /** Injectable dependencies for the registry (defaults use real services). */
@@ -100,6 +100,10 @@ export function createPrRegistry(deps: RegistryDeps = {}): PrRegistry {
       const pr: LoadedPr = {
         id, url, owner: ref.owner, repo: ref.repo, number: ref.number,
         title: meta.title, body: meta.body, baseRef: meta.baseRef, headRef: meta.headRef,
+        commitCount: meta.commits.length,
+        additions: meta.additions, deletions: meta.deletions, changedFiles: meta.changedFiles,
+        createdAtIso: meta.createdAtIso, updatedAtIso: meta.updatedAtIso, authorLogin: meta.authorLogin,
+        lastOpenedAtMs: now(),
       };
       const config: MergieConfig = deps.config ?? loadConfig(deps.pathEnv) ?? defaultConfig();
       const git: GitService = makeGit(cloneDir(ref, deps.pathEnv));
@@ -111,14 +115,21 @@ export function createPrRegistry(deps: RegistryDeps = {}): PrRegistry {
       return pr;
     },
 
-    listPrs: () => [...workspaces.values()].map((w) => w.pr),
+    listPrs: () => [...workspaces.values()].map((w) => w.pr).sort((a, b) => b.lastOpenedAtMs - a.lastOpenedAtMs),
     getPr: (id) => workspaces.get(id)?.pr,
     getWorkspace: (id) => workspaces.get(id),
+    touchPr: (id) => workspaces.get(id)?.touch(),
 
     async commits(id: string): Promise<CommitInfo[]> {
       const ws = workspaces.get(id);
       if (!ws) throw new Error(`Unknown PR: ${id}`);
       return ws.commits();
+    },
+
+    async prProgress(id: string): Promise<PrProgress> {
+      const ws = workspaces.get(id);
+      if (!ws) throw new Error(`Unknown PR: ${id}`);
+      return ws.reviewProgress();
     },
 
     drainAi: (timeoutMs: number) => inflight.idle(timeoutMs),
@@ -179,6 +190,9 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
   const remoteUrl = `https://${ref.host}/${ref.owner}/${ref.repo}.git`;
   let cloned = false;
   let baselineSha = "";
+  // The whole-PR hunk hashes, computed once for review-progress and invalidated
+  // on refresh (new commits change the diff). Viewed counts are read live.
+  let cachedHunkHashes: string[] | null = null;
 
   async function ensureClone(): Promise<void> {
     if (cloned) return;
@@ -311,8 +325,37 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
     return absent(`The commented line(s) are not present at the ${where}.`);
   }
 
+  /** Build the whole-PR (baseline → head) file view once and cache hunk hashes. */
+  async function wholePrHunkHashes(): Promise<string[]> {
+    if (cachedHunkHashes !== null) return cachedHunkHashes;
+    await ensureClone();
+    const files = await buildRangeView(
+      {
+        rawDiff: (s, e) => git.rawDiff(s, e, undefined, false),
+        wordDiff: (s, e) => git.rawWordDiff(s, e, undefined, false),
+        isViewed: (h) => views.isViewed(h),
+        lockfilePatterns: config.lockfilePatterns,
+        largeDiffThreshold: config.largeDiffThreshold,
+        comments: comments.listAll(),
+        githubThreads: cachedThreads(),
+      },
+      baselineSha,
+      meta.headSha,
+    );
+    cachedHunkHashes = files.flatMap((f) => f.hunks.map((h) => h.hash));
+    return cachedHunkHashes;
+  }
+
   return {
     pr,
+    touch(): void {
+      pr.lastOpenedAtMs = now();
+    },
+    async reviewProgress(): Promise<PrProgress> {
+      const hashes: string[] = await wholePrHunkHashes();
+      const viewed: number = hashes.reduce((n, h) => (views.isViewed(h) ? n + 1 : n), 0);
+      return { viewed, total: hashes.length };
+    },
     config: () => ({ models: config.models, templates: config.templates }),
     commits: mappedCommits,
     async refresh(): Promise<void> {
@@ -322,6 +365,13 @@ function makeWorkspace(input: WorkspaceInputs): Workspace {
       pr.body = fresh.body;
       pr.baseRef = fresh.baseRef;
       pr.headRef = fresh.headRef;
+      pr.commitCount = fresh.commits.length;
+      pr.additions = fresh.additions;
+      pr.deletions = fresh.deletions;
+      pr.changedFiles = fresh.changedFiles;
+      pr.updatedAtIso = fresh.updatedAtIso;
+      pr.authorLogin = fresh.authorLogin;
+      cachedHunkHashes = null;
       await git.cloneOrFetch(remoteUrl, [`refs/pull/${ref.number}/head`, fresh.baseRef]);
       baselineSha = (await git.mergeBase(`origin/${fresh.baseRef}`, fresh.headSha)) || fresh.baseRef;
       cloned = true;

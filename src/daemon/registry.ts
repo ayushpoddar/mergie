@@ -91,6 +91,14 @@ export interface PostPreview {
   warning: string | null;
 }
 
+/** Whole-PR review progress, counted in hunks. */
+export interface PrProgress {
+  /** Hunks marked viewed across the whole PR (baseline → head). */
+  viewed: number;
+  /** Total hunks in the whole PR (lock/generated files included). */
+  total: number;
+}
+
 /** A PR's commit topology for the range selector. */
 export interface CommitsWithBaseline {
   /** The "before-PR" baseline SHA (merge-base with the target branch). */
@@ -103,6 +111,14 @@ export interface CommitsWithBaseline {
 export interface Workspace {
   /** The public PR summary. */
   pr: LoadedPr;
+  /** Stamp this PR as opened now (drives the "recently reviewed" ordering). */
+  touch(): void;
+  /**
+   * Whole-PR review progress (viewed vs. total hunks, baseline → head). The
+   * total hunk set is computed once (cloning if needed) and cached; the viewed
+   * count is re-read each call so it reflects the latest marks.
+   */
+  reviewProgress(): Promise<PrProgress>;
   /** The selectable models and review templates from config. */
   config(): { models: ModelChoice[]; templates: ReviewTemplate[] };
   /**
@@ -240,14 +256,34 @@ export interface LoadedPr {
   baseRef: string;
   /** Source branch the PR merges from. */
   headRef: string;
+  /** Number of commits in the PR. */
+  commitCount: number;
+  /** Lines added across the whole PR (base → head). */
+  additions: number;
+  /** Lines deleted across the whole PR (base → head). */
+  deletions: number;
+  /** Files changed across the whole PR. */
+  changedFiles: number;
+  /** ISO-8601 timestamp the PR was opened on GitHub. */
+  createdAtIso: string;
+  /** ISO-8601 timestamp of the PR's last GitHub update. Kept current by Refresh. */
+  updatedAtIso: string;
+  /** GitHub login of the PR author. */
+  authorLogin: string;
+  /** Epoch-ms when this PR was last opened in mergie (drives list ordering). */
+  lastOpenedAtMs: number;
 }
 
 /** Manages the set of PRs the daemon is serving. */
 export interface PrRegistry {
   /** Load (or attach to an already-loaded) PR by URL. */
   loadPr(url: string): Promise<LoadedPr>;
-  /** All currently-loaded PRs. */
+  /** All currently-loaded PRs, most-recently-opened first. */
   listPrs(): LoadedPr[];
+  /** Stamp a loaded PR as opened now; a no-op for an unknown id. */
+  touchPr(id: string): void;
+  /** Whole-PR review progress for a loaded PR (throws if not loaded). */
+  prProgress(id: string): Promise<PrProgress>;
   /** A loaded PR by id, or undefined. */
   getPr(id: string): LoadedPr | undefined;
   /** Commits belonging to a loaded PR, oldest → newest. */

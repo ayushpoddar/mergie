@@ -1007,6 +1007,23 @@ button.ai-indicator { cursor: pointer; }
 .pr-card-num { color: var(--accent); font-weight: 600; }
 .pr-card-title { font-size: var(--fs-subhead); font-weight: 600; }
 .pr-card-author { font-size: var(--fs-caption); color: var(--muted); }
+.pr-card-avatar { width: 20px; height: 20px; border-radius: 999px; flex: none; background: var(--gray-100); }
+
+/* Secondary metadata line: branch, commits, size, timestamps, progress. Dot
+   separators between stats; wraps on narrow widths. */
+.pr-card-stats {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+  font-size: var(--fs-caption); color: var(--muted);
+}
+.pr-stat { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.pr-stat + .pr-stat::before { content: "·"; margin-right: 10px; color: var(--gray-400); }
+.pr-branch { font-family: var(--mono); max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.pr-size .add { color: var(--success); }
+.pr-size .del { color: var(--danger); }
+.pr-progress { font-weight: 600; color: var(--text-secondary); }
+/* A pulsing placeholder shown while a lazily-fetched stat (size / progress) loads. */
+.pr-skeleton { width: 64px; height: 10px; border-radius: 999px; background: var(--gray-200); animation: pr-skeleton-pulse 1.2s ease-in-out infinite; }
+@keyframes pr-skeleton-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
 
 /* ── PR picker (home + Switch-PR modal) ────────────────────────────── */
 .picker { display: flex; flex-direction: column; gap: var(--sp-4); }

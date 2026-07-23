@@ -3,8 +3,9 @@ import { trpc } from "../trpc.ts";
 import { parsePrUrl } from "@/domain/url.ts";
 import { filterPrs } from "@/web/lib/filterPrs.ts";
 import { excludeLoaded } from "@/web/lib/prPickerModel.ts";
+import { relativeTime } from "@/web/lib/relativeTime.ts";
 import { RefreshIcon, SearchIcon, InboxIcon } from "./Icons.tsx";
-import type { MyPrSummary, PrRelationship } from "@/services/ghSearch.ts";
+import type { MyPrSummary, PrRelationship, PrSize } from "@/services/ghSearch.ts";
 import type { LoadedPr } from "@/daemon/registry.ts";
 
 /** Human labels for each PR relationship, shown as row chips. */
@@ -29,6 +30,16 @@ function loadHref(url: string): string {
   return `/?load=${encodeURIComponent(url)}`;
 }
 
+/** GitHub's per-user avatar image URL (no API call needed). */
+function avatarUrl(login: string): string {
+  return `https://github.com/${encodeURIComponent(login)}.png?size=40`;
+}
+
+/** Map key matching the daemon's `sizeKey` (owner/repo/number). */
+function sizeKey(p: { owner: string; repo: string; number: number }): string {
+  return `${p.owner}/${p.repo}/${p.number}`;
+}
+
 /**
  * The PR picker: a custom-URL input, a text filter, the PRs already loaded in
  * mergie ("Recently reviewed"), and the viewer's open PRs from GitHub. Used
@@ -41,7 +52,13 @@ export function PrPicker(props: { currentPrId?: string }): React.JSX.Element {
 
   const loaded: LoadedPr[] = health.data?.prs ?? [];
   const loadedShown: LoadedPr[] = filterPrs(query, loaded);
-  const searchShown: MyPrSummary[] = filterPrs(query, excludeLoaded(mine.data ?? [], loaded));
+  const githubAll: MyPrSummary[] = excludeLoaded(mine.data ?? [], loaded);
+  const searchShown: MyPrSummary[] = filterPrs(query, githubAll);
+
+  // One batched size lookup for the whole GitHub list (not the filtered subset),
+  // so typing in the filter never re-fetches sizes.
+  const sizeRefs = githubAll.map((p) => ({ owner: p.owner, repo: p.repo, number: p.number }));
+  const sizes = trpc.prSizes.useQuery({ refs: sizeRefs }, { enabled: sizeRefs.length > 0, staleTime: Infinity, retry: false });
 
   return (
     <div className="picker">
@@ -82,7 +99,14 @@ export function PrPicker(props: { currentPrId?: string }): React.JSX.Element {
             <RefreshIcon size={13} /> {mine.isFetching ? "Refreshing…" : "Refresh"}
           </button>
         </div>
-        <GithubResults query={query} loading={mine.isLoading} error={mine.error?.message ?? null} prs={searchShown} />
+        <GithubResults
+          query={query}
+          loading={mine.isLoading}
+          error={mine.error?.message ?? null}
+          prs={searchShown}
+          sizes={sizes.data ?? {}}
+          sizesLoading={sizes.isLoading}
+        />
       </section>
     </div>
   );
@@ -127,6 +151,8 @@ function GithubResults(props: {
   loading: boolean;
   error: string | null;
   prs: MyPrSummary[];
+  sizes: Record<string, PrSize>;
+  sizesLoading: boolean;
 }): React.JSX.Element {
   if (props.loading) {
     return <div className="picker-status"><span className="chat-spinner" aria-hidden="true" /> Finding your pull requests…</div>;
@@ -151,41 +177,73 @@ function GithubResults(props: {
   }
   return (
     <ul className="pr-cards">
-      {props.prs.map((p) => <GithubRow key={p.url} pr={p} />)}
+      {props.prs.map((p) => (
+        <GithubRow key={p.url} pr={p} size={props.sizes[sizeKey(p)]} sizeLoading={props.sizesLoading} />
+      ))}
     </ul>
   );
 }
 
-/** One already-loaded PR row. */
+/** The PR author's avatar, or nothing when the login is unknown. */
+function Avatar(props: { login: string }): React.JSX.Element | null {
+  if (!props.login) return null;
+  return <img className="pr-card-avatar" src={avatarUrl(props.login)} alt="" width={20} height={20} loading="lazy" />;
+}
+
+/** A diff-size stat ("+120 −8 · 5 files"), a skeleton while loading, or nothing. */
+function SizeStat(props: { size: PrSize | undefined; loading: boolean }): React.JSX.Element | null {
+  if (props.size) {
+    return (
+      <span className="pr-stat pr-size">
+        <span className="add">+{props.size.additions.toLocaleString()}</span>{" "}
+        <span className="del">−{props.size.deletions.toLocaleString()}</span>
+        {" · "}{props.size.changedFiles} {props.size.changedFiles === 1 ? "file" : "files"}
+      </span>
+    );
+  }
+  if (props.loading) return <span className="pr-stat pr-skeleton" aria-hidden="true" />;
+  return null;
+}
+
+/** One already-loaded PR row (rich metadata + live review progress). */
 function LoadedRow(props: { pr: LoadedPr; isCurrent: boolean }): React.JSX.Element {
   const { pr, isCurrent } = props;
-  const meta = (
-    <span className="pr-card-meta">
-      <span className="pr-card-repo">{pr.owner}/{pr.repo}</span>
-      <span className="pr-card-num">#{pr.number}</span>
-      {isCurrent && <span className="pr-chip pr-chip-current">Reviewing now</span>}
-    </span>
+  const now = Date.now();
+  const progress = trpc.prProgress.useQuery({ id: pr.id }, { staleTime: 30_000, retry: false });
+  const inner = (
+    <>
+      <span className="pr-card-meta">
+        <Avatar login={pr.authorLogin} />
+        <span className="pr-card-repo">{pr.owner}/{pr.repo}</span>
+        <span className="pr-card-num">#{pr.number}</span>
+        {isCurrent && <span className="pr-chip pr-chip-current">Reviewing now</span>}
+      </span>
+      <span className="pr-card-title">{pr.title}</span>
+      <span className="pr-card-stats">
+        <span className="pr-stat pr-branch" title={`${pr.baseRef} ← ${pr.headRef}`}>{pr.baseRef} ← {pr.headRef}</span>
+        <span className="pr-stat">{pr.commitCount} {pr.commitCount === 1 ? "commit" : "commits"}</span>
+        <SizeStat size={{ additions: pr.additions, deletions: pr.deletions, changedFiles: pr.changedFiles }} loading={false} />
+        {pr.updatedAtIso && <span className="pr-stat">updated {relativeTime(pr.updatedAtIso, now)}</span>}
+        {progress.data && progress.data.total > 0 && (
+          <span className="pr-stat pr-progress">{progress.data.viewed}/{progress.data.total} hunks</span>
+        )}
+        {progress.isLoading && <span className="pr-stat pr-skeleton" aria-hidden="true" />}
+      </span>
+    </>
   );
-  if (isCurrent) {
-    return <li><div className="pr-card pr-card-current">{meta}<span className="pr-card-title">{pr.title}</span></div></li>;
-  }
-  return (
-    <li>
-      <a className="pr-card" href={loadedHref(pr.id)}>
-        {meta}
-        <span className="pr-card-title">{pr.title}</span>
-      </a>
-    </li>
-  );
+  if (isCurrent) return <li><div className="pr-card pr-card-current">{inner}</div></li>;
+  return <li><a className="pr-card" href={loadedHref(pr.id)}>{inner}</a></li>;
 }
 
 /** One GitHub-search PR row, tagged with the viewer's relationship(s). */
-function GithubRow(props: { pr: MyPrSummary }): React.JSX.Element {
-  const { pr } = props;
+function GithubRow(props: { pr: MyPrSummary; size: PrSize | undefined; sizeLoading: boolean }): React.JSX.Element {
+  const { pr, size, sizeLoading } = props;
+  const now = Date.now();
   return (
     <li>
       <a className="pr-card" href={loadHref(pr.url)}>
         <span className="pr-card-meta">
+          <Avatar login={pr.author} />
           <span className="pr-card-repo">{pr.owner}/{pr.repo}</span>
           <span className="pr-card-num">#{pr.number}</span>
           {pr.isDraft && <span className="pr-chip pr-chip-draft">Draft</span>}
@@ -194,7 +252,12 @@ function GithubRow(props: { pr: MyPrSummary }): React.JSX.Element {
           ))}
         </span>
         <span className="pr-card-title">{pr.title}</span>
-        {pr.author && <span className="pr-card-author">by {pr.author}</span>}
+        <span className="pr-card-stats">
+          {pr.author && <span className="pr-stat">{pr.author}</span>}
+          {pr.updatedAtIso && <span className="pr-stat">updated {relativeTime(pr.updatedAtIso, now)}</span>}
+          {pr.createdAtIso && <span className="pr-stat">opened {relativeTime(pr.createdAtIso, now)}</span>}
+          <SizeStat size={size} loading={sizeLoading} />
+        </span>
       </a>
     </li>
   );

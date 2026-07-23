@@ -10,7 +10,13 @@ import type { GhPrService, PrMeta } from "@/services/ghPr.ts";
 import type { GhSearchService } from "@/services/ghSearch.ts";
 
 /** A search service that returns no PRs (the router tests don't exercise it). */
-const emptySearch: GhSearchService = { listMyPrs: async () => [] };
+const emptySearch: GhSearchService = { listMyPrs: async () => [], prSizes: async () => ({}) };
+
+/** The metadata-derived LoadedPr fields the router tests don't care about. */
+const PR_EXTRA = {
+  commitCount: 0, additions: 0, deletions: 0, changedFiles: 0,
+  createdAtIso: "", updatedAtIso: "", authorLogin: "", lastOpenedAtMs: 0,
+} as const;
 
 const COMMIT: CommitInfo = {
   sha: "abc123",
@@ -29,12 +35,15 @@ function fakeRegistry(): PrRegistry & { loaded: LoadedPr[] } {
       const pr: LoadedPr = {
         id: `pr-${loaded.length + 1}`, url, owner: "o", repo: "r",
         number: loaded.length + 1, title: "T", body: "", baseRef: "main", headRef: "feature",
+        ...PR_EXTRA,
       };
       loaded.push(pr);
       return pr;
     },
     listPrs: () => loaded,
     getPr: (id) => loaded.find((p) => p.id === id),
+    touchPr: () => {},
+    prProgress: async () => ({ viewed: 0, total: 0 }),
     commits: async () => [COMMIT],
     getWorkspace: () => undefined,
     drainAi: async () => true,
@@ -97,6 +106,7 @@ const WS_DIFF = `diff --git a/src/a.ts b/src/a.ts
 
 const WS_META: PrMeta = {
   title: "T", body: "", baseRef: "main", headRef: "feature", headSha: "bbb222",
+  additions: 0, deletions: 0, changedFiles: 0, createdAtIso: "", updatedAtIso: "", authorLogin: "",
   commits: [
     { sha: "aaa111", subject: "one", authorName: "A", isoDate: "2026-07-10T00:00:00Z" },
     { sha: "bbb222", subject: "two", authorName: "A", isoDate: "2026-07-11T00:00:00Z" },
