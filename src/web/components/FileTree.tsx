@@ -4,6 +4,7 @@ import {
 } from "./Icons.tsx";
 import { fileStatusClass } from "@/web/lib/fileStatus.ts";
 import { buildFileTree, type TreeDir, type TreeNode } from "@/web/lib/fileTree.ts";
+import { searchFiles } from "@/web/lib/visibleFiles.ts";
 import type { FileView } from "@/daemon/reviewService.ts";
 
 /** DOM id for a file's section in the main diff area (for scroll-to). */
@@ -11,15 +12,21 @@ export function fileSectionId(path: string): string {
   return `file-${path}`;
 }
 
-/** Left-column file list: fuzzy search, a flat/tree view switch, and the list. */
+/**
+ * Left-column file list: fuzzy search, a flat/tree view switch, and the list.
+ *
+ * The filter text is owned here (not by the parent review screen) on purpose:
+ * typing it must redraw only this sidebar, never the center diff. `files` is the
+ * toggle-filtered but *unsearched* list; the search is applied locally.
+ */
 export function FileTree(props: {
   files: FileView[];
-  query: string;
-  onQuery: (q: string) => void;
   treeView: boolean;
   onTreeViewChange: (tree: boolean) => void;
 }): React.JSX.Element {
-  const { files, query, onQuery, treeView, onTreeViewChange } = props;
+  const { files, treeView, onTreeViewChange } = props;
+  const [query, setQuery] = useState("");
+  const listed: FileView[] = searchFiles(files, query);
   return (
     <nav className="file-tree">
       <div className="file-search-wrap">
@@ -29,7 +36,7 @@ export function FileTree(props: {
           type="search"
           placeholder="Filter files…"
           value={query}
-          onChange={(e) => onQuery(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
       </div>
       <div className="file-view-switch" role="group" aria-label="File list view">
@@ -53,8 +60,8 @@ export function FileTree(props: {
         </button>
       </div>
       {treeView
-        ? <TreeRoot nodes={buildFileTree(files)} expandAll={query.length > 0} />
-        : <FlatList files={files} />}
+        ? <TreeRoot nodes={buildFileTree(listed)} expandAll={query.length > 0} />
+        : <FlatList files={listed} />}
     </nav>
   );
 }

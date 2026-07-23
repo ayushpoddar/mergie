@@ -5,6 +5,22 @@ Backlog of ideas and known gaps not yet scheduled. Product-level notes; see
 
 ## Medium priority
 
+- **A PR's repo can be cloned several times at once on first open.** Opening a not-yet-cloned PR
+  fires off the clone the first time any operation needs it, but several such operations run at
+  once on page load (the range selector, the default-range resolution, and the diff itself). None
+  of them wait for the others, so each starts its **own** full clone/fetch of the same repository
+  in parallel. On a small repo this is barely noticeable; on a large one (e.g. a monorepo with ~1M
+  git objects) it thrashes disk and network and the first open drags on far longer than a single
+  clone would. Fix idea: remember the in-flight clone as a shared promise so concurrent callers all
+  await the one clone instead of starting duplicates.
+- **The center diff redraws more than it needs to.** Every diff card (and its syntax highlighting)
+  is re-rendered whenever the review screen re-renders — e.g. flipping a view filter, changing the
+  commit range, or any small state change — even for cards whose content didn't change. On large
+  PRs this shows up as a brief stutter. The file-filter case was fixed by making the filter text
+  local to the sidebar (so typing no longer touches the diff); the remaining, broader fix is to let
+  each diff card skip re-rendering when its own data is unchanged (memoize the file sections / hunk
+  cards and give them stable inputs). Bigger, higher-risk change; do it when diff responsiveness on
+  large PRs becomes a priority.
 - **Cancel / stop a running AI chat turn.** A turn now shows live activity + elapsed time, but
   there is still no way to stop one that is taking too long or has gone off-track — you must wait
   for it to finish. This needs server-side cancellation of the agent run (aborting the SDK query

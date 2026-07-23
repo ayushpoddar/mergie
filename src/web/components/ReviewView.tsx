@@ -3,7 +3,7 @@ import { trpc } from "../trpc.ts";
 import { useReview, type ReviewState, type RangeSel } from "../state/useReview.ts";
 import { useCodeSearch, type MenuOp, type SearchSide } from "../state/useCodeSearch.ts";
 import { useChat, type ChatState } from "../state/useChat.ts";
-import { visibleFiles, searchFiles } from "@/web/lib/visibleFiles.ts";
+import { visibleFiles } from "@/web/lib/visibleFiles.ts";
 import { reviewProgress } from "@/web/lib/reviewProgress.ts";
 import { usePersistedToggles, hideWhitespaceStorageKey } from "@/web/lib/togglePrefs.ts";
 import { usePersistedFlag } from "@/web/lib/persistedFlag.ts";
@@ -56,7 +56,6 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
     baseSha: () => review.range?.start ?? "",
   });
   const chat = useChat(props.prId, () => review.range);
-  const [query, setQuery] = useState("");
   const [toggles, setToggles] = usePersistedToggles(props.prId);
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistedFlag(LEFT_SIDEBAR_COLLAPSED_KEY, false);
   const [treeView, setTreeView] = usePersistedFlag(FILE_TREE_VIEW_KEY, true);
@@ -98,10 +97,10 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
   const health = trpc.health.useQuery();
   const pr = health.data?.prs.find((p) => p.id === props.prId);
   usePageTitle(pr ? `${pr.owner}/${pr.repo} #${pr.number} — ${pr.title}` : null);
-  // The diff area and the sidebar share the same toggle-filtered set; the
-  // search box narrows only the sidebar (`listed`), never the diff (`files`).
+  // The diff area and the sidebar share the same toggle-filtered set. The file
+  // filter lives inside FileTree (not here) so typing it redraws only the
+  // sidebar list, never this component and its diff.
   const files: FileView[] = visibleFiles(review.files, toggles, revealedHunks);
-  const listed: FileView[] = searchFiles(files, query);
   // Progress counts the whole on-screen range, so view filters don't skew it.
   const progress = reviewProgress(review.files);
   const remaining: number = progress.total - progress.viewed;
@@ -220,9 +219,7 @@ export function ReviewView(props: { prId: string }): React.JSX.Element {
           <div className="sidebar-content">
             <Toolbar toggles={toggles} onChange={setToggles} hideWhitespace={hideWhitespace} onHideWhitespaceChange={setHideWhitespace} />
             <FileTree
-              files={listed}
-              query={query}
-              onQuery={setQuery}
+              files={files}
               treeView={treeView}
               onTreeViewChange={setTreeView}
             />
